@@ -1,0 +1,315 @@
+services:
+  kafka:
+    image: apache/kafka:latest
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - 9092:9092
+      - 9094:9094
+      - 9095:9095
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT,DOCKER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9094,EXTERNAL://localhost:9092,DOCKER://host.docker.internal:9095
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9094,CONTROLLER://:9093,EXTERNAL://:9092,DOCKER://:9095
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--list", "--bootstrap-server", "kafka:9094"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 1s
+
+  kafka-ui:
+    image: 'provectuslabs/kafka-ui:latest'
+    profiles:
+      - observability
+      - full
+    ports:
+      - '8085:8080'
+    depends_on:
+      - kafka
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local #5
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9094 #6
+      - KAFKA_CLUSTERS_0_PROPERTIES_CONSUMER_KEY_DESERIALIZER=org.apache.kafka.common.serialization.HexDeserializer
+      - KAFKA_CLUSTERS_0_PROPERTIES_CONSUMER_VALUE_DESERIALIZER=org.apache.kafka.common.serialization.HexDeserializer
+      - KAFKA_CLUSTERS_0_PROPERTIES_PRODUCER_KEY_SERIALIZER=org.apache.kafka.common.serialization.HexSerializer
+      - KAFKA_CLUSTERS_0_PROPERTIES_PRODUCER_VALUE_SERIALIZER=org.apache.kafka.common.serialization.HexSerializer
+
+  taktx:
+    image: ghcr.io/taktx-io/taktx-engine:0.2.0-beta-1
+    profiles:
+      - engine
+      - full
+    ports:
+      - 8079:8079
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+        - KAFKA_BOOTSTRAP_SERVERS=kafka:9094
+        # ⚠️  These two values form the Kafka topic prefix (<tenant-id>.<namespace>.*).
+        # Changing them on a cluster with existing data is a BREAKING MIGRATION.
+        # Engine and all its ingesters must always use identical values.
+        - TAKTX_ENGINE_TENANT_ID=acme
+        - TAKTX_ENGINE_NAMESPACE=default
+        # Note: TAKTX_LICENSE_FILE_LOCATION removed — license is delivered via the
+        # taktx-configuration topic (pushed by the ingester at startup).
+        # Note: TAKTX_PLATFORM_PUBLIC_KEY removed — JWT public key resolution uses
+        # taktx-signing-keys by JWT kid. Key is pushed by PlatformKeyPublisher at startup.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8079/q/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  prometheus:
+    image: prom/prometheus
+    profiles:
+      - observability
+      - full
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    profiles:
+      - observability
+      - full
+    ports:
+      - 3000:3000
+    volumes:
+      - "./grafana/data:/var/lib/grafana"
+      - "./grafana/provisioning:/etc/grafana/provisioning"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+
+  postgres:
+    image: postgres:16-alpine
+    profiles:
+      - console
+      - platform
+      - full
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=taktx_platform
+      - POSTGRES_USER=taktx
+      - POSTGRES_PASSWORD=taktx
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taktx -d taktx_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    profiles:
+      - console
+      - platform
+      - full
+    command: start-dev --import-realm
+    ports:
+      - "8180:8080"
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/taktx_identity
+      - KC_DB_USERNAME=taktx
+      - KC_DB_PASSWORD=taktx
+      - KC_HEALTH_ENABLED=true
+      - KC_METRICS_ENABLED=true
+      - KC_HTTP_ENABLED=true
+      # KC_HOSTNAME_URL forces a canonical issuer URL in all tokens and discovery docs,
+      # regardless of which hostname is used to call Keycloak internally or externally.
+      - KC_HOSTNAME_URL=http://localhost:8180
+      - KC_HOSTNAME_ADMIN_URL=http://localhost:8180
+      - KC_HOSTNAME_STRICT=false
+      - KC_HOSTNAME_STRICT_BACKCHANNEL=false
+    volumes:
+      - ./keycloak/taktx-realm.json:/opt/keycloak/data/import/taktx-realm.json
+      - keycloak-data:/opt/keycloak/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  taktx-platform-service:
+    # Build locally with: docker compose --profile console up --build
+    # Pull from registry: docker compose --profile console up  (no --build)
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-platform-service:${IMAGE_TAG:-0.2.0-beta-5}
+    profiles:
+      - console
+      - full
+    build:
+      context: ../backend
+      dockerfile: platform-service/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - QUARKUS_HTTP_PORT=8080
+      - QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://postgres:5432/taktx_platform
+      - QUARKUS_DATASOURCE_USERNAME=taktx
+      - QUARKUS_DATASOURCE_PASSWORD=taktx
+      - QUARKUS_OIDC_AUTH_SERVER_URL=http://keycloak:8080/realms/taktx
+      - QUARKUS_OIDC_CLIENT_ID=platform-service
+      # Token validation - audience and issuer must match what Keycloak puts in tokens
+      - QUARKUS_OIDC_TOKEN_AUDIENCE=taktx-console
+      - QUARKUS_OIDC_TOKEN_ISSUER=http://localhost:8180/realms/taktx
+      # Proxy headers - trust X-Forwarded-* from nginx
+      - QUARKUS_HTTP_PROXY_ENABLED=true
+      - QUARKUS_HTTP_CORS_ENABLED=false
+      - BOOTSTRAP_SERVERS=kafka:9094
+      - TAKTX_ENGINE_NAMESPACE=namespace
+      # Master encryption key for RSA private key at-rest encryption (AES-256-GCM).
+      # Generate a real key with: openssl rand -base64 32
+      # Store in a .env file or secrets manager — NEVER commit to version control.
+      - TAKTX_ENCRYPTION_MASTER_KEY=${TAKTX_ENCRYPTION_MASTER_KEY:-changeme-set-TAKTX_ENCRYPTION_MASTER_KEY-in-env}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  taktx-ingester-inmemory:
+    # Build locally with: docker compose --profile console up --build
+    # Pull from registry: docker compose --profile console up  (no --build)
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-ingester-inmemory:${IMAGE_TAG:-0.2.0-beta-5}
+    profiles:
+      - console
+      - full
+    build:
+      context: ../backend
+      dockerfile: ingesters/inmemory/Dockerfile
+    # Port exposed for direct backend access (optional, mainly for debugging)
+    # When using nginx reverse proxy, this can be commented out
+    ports:
+      - "8084:8084"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      taktx-platform-service:
+        condition: service_healthy
+    environment:
+      - QUARKUS_HTTP_PORT=8084
+      - TAKTX_PLATFORM_URL=http://taktx-platform-service:8080
+      - BOOTSTRAP_SERVERS=kafka:9094
+      # ⚠️  Must match TAKTX_ENGINE_TENANT_ID and TAKTX_ENGINE_NAMESPACE on the engine exactly.
+      # Changing these on a cluster with existing data is a BREAKING MIGRATION.
+      - TAKTX_ENGINE_TENANT_ID=acme
+      - TAKTX_ENGINE_NAMESPACE=default
+    # Optional: Persist TaktX client data (process definitions, etc.)
+    # volumes:
+    #   - ./taktx-console-data:/home/taktx/.taktx
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8084/q/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  taktx-console-frontend:
+    # Build locally with: docker compose --profile console up --build
+    # Pull from registry: docker compose --profile console up  (no --build)
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-console-frontend:${IMAGE_TAG:-0.2.0-beta-5}
+    profiles:
+      - console
+      - full
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        # Empty = relative URLs via nginx — works on any domain without rebuild
+        - NEXT_PUBLIC_PLATFORM_SERVICE_URL=
+    ports:
+      - "3001:3000"
+    depends_on:
+      taktx-platform-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # OIDC_ISSUER = public URL the browser uses for login redirects.
+      # Must match the iss claim in tokens (enforced by KC_HOSTNAME_URL on the IdP).
+      - OIDC_ISSUER=http://localhost:8180/realms/taktx
+      - OIDC_CLIENT_ID=taktx-console
+      - OIDC_CLIENT_SECRET=taktx-console-secret
+      # OIDC_ISSUER_INTERNAL = server-side discovery/token URL reachable from the container.
+      # Uses host.docker.internal so the container reaches the host's port 8180.
+      # KC_HOSTNAME_URL ensures Keycloak returns issuer=localhost:8180 here too,
+      # so it matches OIDC_ISSUER and NextAuth's issuer validation passes.
+      - OIDC_ISSUER_INTERNAL=http://host.docker.internal:8180/realms/taktx
+      # NEXTAUTH_URL = public URL of the app — must match what the browser uses (nginx port)
+      - NEXTAUTH_URL=http://localhost:3002
+      - AUTH_SECRET=dev-secret-change-in-production
+      - AUTH_TRUST_HOST=true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Nginx reverse proxy - eliminates CORS by serving frontend and backend from same origin
+  # Access the application at http://localhost:3002
+  nginx:
+    image: nginx:alpine
+    profiles:
+      - console
+      - full
+    ports:
+      - "3002:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      taktx-console-frontend:
+        condition: service_healthy
+      taktx-platform-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/nginx-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  postgres-data:
+    driver: local
+  keycloak-data:
+    driver: local

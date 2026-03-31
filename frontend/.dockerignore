@@ -1,0 +1,44 @@
+# Exclude large directories that must not be sent to Docker daemon
+taktx-console/node_modules/
+node_modules/
+
+# Exclude Next.js build cache (large, not needed) but KEEP standalone + static
+# (Dockerfile.prebuilt copies taktx-console/.next/standalone and .next/static)
+taktx-console/.next/cache/
+taktx-console/.next/server/chunks/
+taktx-console/.swc/
+taktx-console/tsconfig.tsbuildinfo
+taktx-console/playwright-report/
+taktx-console/coverage/
+
+# Testing
+**/coverage/
+**/test-results/
+**/playwright-report/
+**/.playwright/
+e2e/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Git
+.git/
+.gitignore
+
+# Environment files — never include secrets in image
+.env
+.env.local
+.env*.local
+
+# Docs and dev-only config
+README.md
+docs/
+*.sh
+jest.config.js
+jest.setup.js
+playwright.config.ts
+eslint.config.mjs
+npm-debug.log*

@@ -1,0 +1,86 @@
+[versions]
+quarkus = "3.28.4"
+junit = "5.10.1"
+assertj = "3.27.7"
+slf4j = "2.0.17"
+mockito = "3.12.4"
+lombok = "1.18.42"
+datastax = "4.17.0"
+taktx = "0.4.0-beta-1"
+cassandra = "1.19.0"
+cassandraQuarkusMapper = "1.3.0"
+jjwt = "0.12.5"
+license3j = "3.3.0"
+tyrus = "2.1.5"
+wiremock = "3.13.0"
+
+[libraries]
+# Quarkus dependencies
+quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
+quarkus-camel-bom = { module = "io.quarkus.platform:quarkus-camel-bom", version.ref = "quarkus" }
+quarkus-junit5 = { module = "io.quarkus:quarkus-junit5" }
+quarkus-junit5-mockito = { module = "io.quarkus:quarkus-junit5-mockito" }
+quarkus-jacoco = { module = "io.quarkus:quarkus-jacoco" }
+quarkus-core = { module = "io.quarkus:quarkus-core", version.ref = "quarkus" }
+quarkus-arc = { module = "io.quarkus:quarkus-arc", version.ref = "quarkus" }
+quarkus-resteasy = { module = "io.quarkus:quarkus-resteasy", version.ref = "quarkus" }
+quarkus-resteasy-jackson = { module = "io.quarkus:quarkus-resteasy-jackson", version.ref = "quarkus" }
+quarkus-resteasy-client = { module = "io.quarkus:quarkus-resteasy-client", version.ref = "quarkus" }
+quarkus-smallrye-health = { module = "io.quarkus:quarkus-smallrye-health", version.ref = "quarkus" }
+quarkus-jackson = { module = "io.quarkus:quarkus-jackson", version.ref = "quarkus" }
+quarkus-websockets = { module = "io.quarkus:quarkus-websockets", version.ref = "quarkus" }
+quarkus-hibernate-validator = { module = "io.quarkus:quarkus-hibernate-validator", version.ref = "quarkus" }
+
+# Identity Service dependencies
+quarkus-oidc = { module = "io.quarkus:quarkus-oidc", version.ref = "quarkus" }
+quarkus-oidc-client = { module = "io.quarkus:quarkus-oidc-client", version.ref = "quarkus" }
+quarkus-security-jpa = { module = "io.quarkus:quarkus-security-jpa", version.ref = "quarkus" }
+quarkus-keycloak-admin-rest-client = { module = "io.quarkus:quarkus-keycloak-admin-rest-client", version.ref = "quarkus" }
+quarkus-hibernate-orm-panache = { module = "io.quarkus:quarkus-hibernate-orm-panache", version.ref = "quarkus" }
+quarkus-jdbc-postgresql = { module = "io.quarkus:quarkus-jdbc-postgresql", version.ref = "quarkus" }
+quarkus-jdbc-h2 = { module = "io.quarkus:quarkus-jdbc-h2", version.ref = "quarkus" }
+quarkus-liquibase = { module = "io.quarkus:quarkus-liquibase", version.ref = "quarkus" }
+quarkus-cache = { module = "io.quarkus:quarkus-cache", version.ref = "quarkus" }
+quarkus-scheduler = { module = "io.quarkus:quarkus-scheduler", version.ref = "quarkus" }
+quarkus-rest = { module = "io.quarkus:quarkus-rest", version.ref = "quarkus" }
+quarkus-rest-client = { module = "io.quarkus:quarkus-rest-client", version.ref = "quarkus" }
+quarkus-rest-jackson = { module = "io.quarkus:quarkus-rest-jackson", version.ref = "quarkus" }
+quarkus-rest-client-jackson = { module = "io.quarkus:quarkus-rest-client-jackson", version.ref = "quarkus" }
+quarkus-security = { module = "io.quarkus:quarkus-security", version.ref = "quarkus" }
+quarkus-test-security = { module = "io.quarkus:quarkus-test-security", version.ref = "quarkus" }
+
+# JWT for authorization tokens
+jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
+jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
+jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }
+
+# License management
+license3j = { module = "com.javax0.license3j:license3j", version.ref = "license3j" }
+
+# TaktX Client
+taktx-client-quarkus = { module = "io.taktx:taktx-client-quarkus", version.ref = "taktx" }
+taktx-shared = { module = "io.taktx:taktx-shared", version.ref = "taktx" }
+
+# Utility libraries
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+
+# Testing
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
+tyrus-standalone-client = { module = "org.glassfish.tyrus.bundles:tyrus-standalone-client", version.ref = "tyrus" }
+wiremock = { module = "org.wiremock:wiremock-standalone", version.ref = "wiremock" }
+rest-assured = { module = "io.rest-assured:rest-assured" }
+testcontainers-kafka = { module = "org.testcontainers:kafka" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter" }
+testcontainers-cassandra = { module = "org.testcontainers:cassandra", version.ref = "cassandra" }
+testcontainers-testcontainers = { module = "org.testcontainers:cassandra", version.ref = "cassandra" }
+
+[plugins]
+quarkus = { id = "io.quarkus", version.ref = "quarkus" }
+spotless = { id = "com.diffplug.spotless", version = "6.25.0" }
+

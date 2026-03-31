@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 10s
+scrape_configs:
+  - job_name: 'quarkus-bpmn'
+    metrics_path: '/q/metrics'
+    static_configs:
+      - targets: ['taktx:8079'] # R

@@ -1,0 +1,9 @@
+/docker/grafana/data/
+/backend/.gradle
+/backend/build
+/.idea
+/backend/ingesters/.gradle
+/backend/ingesters/build
+/backend/ingesters/inmemory/build
+/backend/platform-service/.gradle
+/backend/platform-service/build

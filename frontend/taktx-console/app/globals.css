@@ -1,0 +1,316 @@
+/* Reset box-sizing for better layout consistency */
+* {
+  box-sizing: border-box;
+}
+
+/* Prevent horizontal overflow */
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Ant Design handles fonts and colors, so we let it control those */
+
+/* BPMN Heatmap pulse animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Slide-in animation for detail panel */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Subtle slide-in animations for variables table transitions */
+@keyframes varsSlideInLeft {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes varsSlideInRight {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.vars-slide-in-left .ant-table-body,
+.vars-slide-in-left .ant-table-content {
+  animation: varsSlideInLeft 0.2s ease-out;
+}
+.vars-slide-in-right .ant-table-body,
+.vars-slide-in-right .ant-table-content {
+  animation: varsSlideInRight 0.2s ease-out;
+}
+
+/* Compact table styling for technical console views */
+.compactTable .ant-table {
+  font-size: 12px;
+}
+.compactTable .ant-table-thead > tr > th {
+  padding: 4px 8px !important;
+  font-size: 12px;
+  line-height: 18px;
+}
+.compactTable .ant-table-tbody > tr > td {
+  padding: 4px 8px !important;
+  line-height: 18px;
+  font-size: 12px; /* ensure same size as flow node tree table */
+}
+.compactTable .ant-table-tbody > tr > td .ant-tag {
+  padding: 0 6px;
+  height: 20px;
+  line-height: 20px;
+  font-size: 12px;
+}
+.compactTable .ant-table-pagination {
+  margin: 8px 0 !important;
+}
+.compactTable .ant-table-tbody > tr > td .uuid {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+/* Disable default Ant Design row selection highlight (we use checkboxes, not row highlight) */
+.compactTable .ant-table-row-selected {
+  background-color: transparent !important;
+  border-left: none !important;
+}
+.compactTable .ant-table-row-selected > td {
+  background-color: transparent !important;
+}
+
+/* Row highlight only for detail panel selection */
+.compactTable .detail-panel-selected {
+  background-color: rgba(24, 144, 255, 0.15) !important;
+  border-left: 3px solid #1677ff !important;
+}
+.compactTable .detail-panel-selected > td {
+  background-color: rgba(24, 144, 255, 0.15) !important;
+}
+.compactTable .detail-panel-selected > td:first-child {
+  padding-left: 5px !important; /* Adjust for border */
+}
+.compactTable .detail-panel-selected:hover > td {
+  background-color: rgba(24, 144, 255, 0.22) !important;
+}
+
+/* Compact flow tree styling */
+.flowTree .ant-tree-node-content-wrapper {
+  padding: 2px 4px;
+}
+.flowTree .ant-tree-icon__customize {
+  display: inline-flex;
+  align-items: center;
+}
+.flowTree .ant-tree-treenode {
+  padding: 2px 0;
+}
+
+/* Selected flow node row - deeper blue highlight with border (the actually selected instance) */
+.flow-node-row-selected {
+  background-color: rgba(24, 144, 255, 0.15) !important;
+  border-left: 3px solid #1677ff !important;
+}
+.flow-node-row-selected > td {
+  background-color: rgba(24, 144, 255, 0.15) !important;
+}
+.flow-node-row-selected > td:first-child {
+  padding-left: 5px !important; /* Adjust for border */
+}
+.flow-node-row-selected:hover > td {
+  background-color: rgba(24, 144, 255, 0.22) !important;
+}
+
+/* Element-matched flow node row - lighter highlight without border (other instances of same element) */
+.flow-node-row-element-matched > td {
+  background-color: rgba(24, 144, 255, 0.06) !important;
+}
+.flow-node-row-element-matched:hover > td {
+  background-color: rgba(24, 144, 255, 0.10) !important;
+}
+
+/* Compact tree table tweaks */
+.treeCompact .ant-table-thead > tr > th,
+.treeCompact .ant-table-tbody > tr > td {
+  padding: 4px 6px !important;
+}
+.treeCompact .ant-table-thead > tr > th {
+  font-size: 12px;
+}
+.treeCompact .ant-table-tbody > tr > td {
+  font-size: 12px;
+}
+.treeCompact .ant-table-cell:nth-child(1),
+.treeCompact .ant-table-cell:nth-child(2) {
+  width: 28px !important;
+  text-align: center;
+}
+.treeCompact .ant-table-row-expand-icon {
+  margin-inline-end: 0 !important;
+}
+.treeCompact .ant-table-row-indent + .ant-table-row-expand-icon {
+  margin-left: 0 !important;
+}
+
+/* Vertically center BPMN icons in their cell */
+.iconCell {
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+:root {
+  --console-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* Use a single, consistent font for all table text */
+.compactTable .ant-table,
+.treeCompact .ant-table {
+  font-family: var(--console-font);
+}
+.compactTable .ant-table-thead > tr > th,
+.treeCompact .ant-table-thead > tr > th {
+  font-family: var(--console-font);
+  font-weight: 600; /* keep header slightly bolder */
+}
+.compactTable .ant-table-tbody > tr > td,
+.treeCompact .ant-table-tbody > tr > td {
+  font-family: var(--console-font);
+  font-weight: 400;
+}
+
+/* JSON syntax highlighting in modal */
+.json-key {
+  color: #79c0ff;
+}
+.json-string {
+  color: #a5d6ff;
+}
+.json-number {
+  color: #79c0ff;
+}
+.json-boolean {
+  color: #ff7b72;
+}
+.json-null {
+  color: #ffa657;
+}
+
+/* Prevent text selection during BPMN diagram panning/dragging */
+.djs-container {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Prevent text selection globally when dragging bpmn elements */
+.djs-drag-active,
+.djs-dragging {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* Also prevent selection on the canvas SVG itself */
+.djs-container svg {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Position bpmn-js built-in breadcrumb at bottom of container */
+.bjs-breadcrumbs {
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 1000 !important;
+  background: #f0f7ff !important;
+  border-top: 1px solid #d6e4ff !important;
+  padding: 8px 12px !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  height: 40px !important;
+  box-sizing: border-box !important;
+}
+
+/* Hide breadcrumbs when at root level (only one item) */
+.bjs-breadcrumbs:has(li:only-child) {
+  display: none !important;
+}
+
+/* Ensure breadcrumb list renders horizontally */
+.bjs-breadcrumbs ol,
+.bjs-breadcrumbs ul {
+  display: flex !important;
+  flex-direction: row !important;
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  align-items: center !important;
+}
+
+.bjs-breadcrumbs li {
+  font-size: 13px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* Breadcrumb separators */
+.bjs-breadcrumbs li:not(:last-child)::after {
+  content: "›" !important;
+  margin: 0 8px !important;
+  color: #666 !important;
+}
+
+/* Don't reserve space when breadcrumb is hidden */
+.djs-container {
+  position: relative !important;
+}
+
+/* Only add padding when breadcrumb is visible (has more than one item) */
+.djs-container:has(.bjs-breadcrumbs:not(:has(li:only-child))) {
+  padding-bottom: 40px !important;
+}
+
+/* Adjust canvas height when breadcrumb is visible */
+.djs-container:has(.bjs-breadcrumbs:not(:has(li:only-child))) > div:not(.bjs-breadcrumbs) {
+  height: calc(100% - 40px) !important;
+}
+
+/* Ensure bpmn.io watermark is always visible (license requirement) */
+.bjs-powered-by {
+  position: absolute !important;
+  bottom: 8px !important;
+  right: 8px !important;
+  z-index: 100 !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* When breadcrumb is visible, move watermark up */
+.djs-container:has(.bjs-breadcrumbs:not(:has(li:only-child))) .bjs-powered-by {
+  bottom: 48px !important;
+}
+

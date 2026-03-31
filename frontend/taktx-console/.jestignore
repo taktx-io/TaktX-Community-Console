@@ -1,0 +1,10 @@
+e2e/
+*.spec.ts
+*.spec.tsx
+*.spec.js
+*.spec.jsx
+*.manual-test.ts
+*.manual-test.tsx
+*.manual-test.js
+*.manual-test.jsx
+
