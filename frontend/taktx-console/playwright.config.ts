@@ -72,7 +72,7 @@ export default defineConfig({
       reuseExistingServer: true, // Use existing server if running
       timeout: 120 * 1000,
       env: {
-        NEXT_PUBLIC_TAKTX_BACKEND_URL: 'http://localhost:8085',
+        NEXT_PUBLIC_PLATFORM_SERVICE_URL: 'http://localhost:8085',
       },
     },
   ],

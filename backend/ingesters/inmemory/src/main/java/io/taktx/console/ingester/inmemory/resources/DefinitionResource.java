@@ -182,9 +182,7 @@ public class DefinitionResource {
       for (StartRequest req : startRequests) {
         try {
           VariablesDTO variablesDTO = VariablesDTO.ofJsonMap(req.getVariables());
-          UUID instanceId =
-              taktClient.startProcess(
-                  processDefinitionId, version, variablesDTO);
+          UUID instanceId = taktClient.startProcess(processDefinitionId, version, variablesDTO);
           instanceIds.add(instanceId.toString());
         } catch (Exception e) {
           log.warn(

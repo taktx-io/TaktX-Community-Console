@@ -124,8 +124,7 @@ public class IngesterProxyResource {
   @Path("/processdefinitions/{id}/version/{version}/xml")
   @Produces(MediaType.APPLICATION_XML)
   public Response getProcessXml(
-      @PathParam("id") String processDefinitionId,
-      @PathParam("version") int version) {
+      @PathParam("id") String processDefinitionId, @PathParam("version") int version) {
     IngesterClient client = createClient();
 
     return client.getProcessXml(processDefinitionId, version);
@@ -223,8 +222,7 @@ public class IngesterProxyResource {
   @GET
   @Path("/processinstances/{id}")
   @Produces(MediaType.APPLICATION_JSON)
-  public Response getProcessInstance(
-      @PathParam("id") String instanceId) {
+  public Response getProcessInstance(@PathParam("id") String instanceId) {
 
     IngesterClient client = createClient();
     Response ingesterResponse;
@@ -256,8 +254,7 @@ public class IngesterProxyResource {
   @GET
   @Path("/processinstances/{id}/flownodes")
   @Produces(MediaType.APPLICATION_JSON)
-  public Response getFlowNodeInstances(
-      @PathParam("id") String instanceId) {
+  public Response getFlowNodeInstances(@PathParam("id") String instanceId) {
 
     IngesterClient client = createClient();
     // Resolve the instance to check VIEW permission
@@ -283,8 +280,7 @@ public class IngesterProxyResource {
   @GET
   @Path("/processinstances/{id}/variables")
   @Produces(MediaType.APPLICATION_JSON)
-  public Response getProcessVariables(
-      @PathParam("id") String instanceId) {
+  public Response getProcessVariables(@PathParam("id") String instanceId) {
     IngesterClient client = createClient();
     // Resolve the instance to check VIEW permission
     Response instanceResponse;
@@ -421,7 +417,7 @@ public class IngesterProxyResource {
     //               The fallback in useBpmnHeatmap also handles this case.
     String wsPath = "/ws/process-events";
 
-    return Response.ok(Map.of( "wsUrl", wsPath)).build();
+    return Response.ok(Map.of("wsUrl", wsPath)).build();
   }
 
   // ============================================================================

@@ -10,12 +10,10 @@ package io.taktx.console.ingester.inmemory.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.taktx.dto.ProcessDefinitionKey;
-import io.taktx.security.AuthorizationTokenValidator;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.websocket.*;
 import jakarta.websocket.server.ServerEndpoint;
-import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -31,12 +29,7 @@ public class ProcessEventWebSocket {
 
   @OnOpen
   public void onOpen(Session session) {
-    // Extract token from query string: ws://host/ws/process-events?token=<readToken>
-    String token = extractToken(session);
-    if (token == null) {
-      log.warn("WS session {} rejected: missing token query parameter", session.getId());
-      closeUnauthorized(session, "Missing token");
-    }
+    log.info("WebSocket connection opened: {}", session.getId());
   }
 
   @OnClose
@@ -131,25 +124,6 @@ public class ProcessEventWebSocket {
       }
     } catch (Exception e) {
       log.error("Error processing WebSocket message: {}", e.getMessage(), e);
-    }
-  }
-
-  private String extractToken(Session session) {
-    String query = session.getQueryString(); // e.g. "token=eyJ..."
-    if (query == null || query.isBlank()) return null;
-    for (String part : query.split("&")) {
-      String[] kv = part.split("=", 2);
-      if (kv.length == 2 && "token".equals(kv[0])) return kv[1];
-    }
-    return null;
-  }
-
-  private void closeUnauthorized(Session session, String reason) {
-    try {
-      session.close(
-          new CloseReason(CloseReason.CloseCodes.VIOLATED_POLICY, "Unauthorized: " + reason));
-    } catch (IOException e) {
-      log.debug("Error closing unauthorized WS session {}: {}", session.getId(), e.getMessage());
     }
   }
 }

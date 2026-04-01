@@ -13,13 +13,11 @@ import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.taktx.console.ingester.inmemory.InstanceUpdateRegistry;
-import io.taktx.console.ingester.inmemory.security.TestTokenFactory;
 import io.taktx.console.ingester.inmemory.testing.KafkaTestResource;
 import io.taktx.console.ingester.inmemory.websocket.FlowNodeEventBroadcaster;
 import io.taktx.console.ingester.inmemory.websocket.FlowNodeEventMessage;
 import io.taktx.dto.ExecutionState;
 import io.taktx.dto.ProcessDefinitionKey;
-import io.taktx.security.AuthorizationTokenValidator;
 import jakarta.inject.Inject;
 import jakarta.websocket.*;
 import java.net.URI;
@@ -48,34 +46,23 @@ class WebSocketBroadcastingIntegrationTest {
 
   @Inject FlowNodeEventBroadcaster broadcaster;
   @Inject InstanceUpdateRegistry instanceRegistry;
-  @Inject
-  AuthorizationTokenValidator tokenValidator;
 
   private final ObjectMapper objectMapper = new ObjectMapper();
   private TestWebSocketClient client;
   private Session session;
 
-  private String validToken() {
-    return TestTokenFactory.validToken();
-  }
-
   @BeforeEach
   void setUp() throws Exception {
-    // Inject our trusted public key so the WS endpoint accepts tokens we sign
-    tokenValidator.overridePublicKeyForTesting(TestTokenFactory.KEY_PAIR.getPublic());
-
+    // Connect directly; WebSocket endpoint no longer requires auth token in tests.
     client = new TestWebSocketClient();
-    URI uriWithToken = new URI(websocketUri + "?token=" + validToken());
-    ContainerProvider.getWebSocketContainer().connectToServer(client, uriWithToken);
-    session = client.getSession();
+    session = ContainerProvider.getWebSocketContainer().connectToServer(client, websocketUri);
 
     // Wait for connection to be established and verify it stayed open
     Thread.sleep(200);
 
     if (session == null || !session.isOpen()) {
       throw new IllegalStateException(
-          "WebSocket session was not established — token rejected or connection failed. "
-              + "Check that overridePublicKeyForTesting was called before connecting.");
+          "WebSocket session was not established. Check endpoint startup and connection setup.");
     }
   }
 
@@ -315,10 +302,10 @@ class WebSocketBroadcastingIntegrationTest {
     TestWebSocketClient client2 = new TestWebSocketClient();
     TestWebSocketClient client3 = new TestWebSocketClient();
 
-    URI uri2 = new URI(websocketUri + "?token=" + validToken());
-    URI uri3 = new URI(websocketUri + "?token=" + validToken());
-    Session session2 = ContainerProvider.getWebSocketContainer().connectToServer(client2, uri2);
-    Session session3 = ContainerProvider.getWebSocketContainer().connectToServer(client3, uri3);
+    Session session2 =
+        ContainerProvider.getWebSocketContainer().connectToServer(client2, websocketUri);
+    Session session3 =
+        ContainerProvider.getWebSocketContainer().connectToServer(client3, websocketUri);
 
     Thread.sleep(100);
 

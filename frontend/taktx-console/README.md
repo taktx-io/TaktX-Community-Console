@@ -1,67 +1,108 @@
-# TaktX Console - Frontend
-A Next.js-based web console for monitoring and managing TaktX BPMN process engine.
+# TaktX Community Console — Frontend
+
+Next.js frontend for the Apache 2.0 TaktX Community Console.
+
 ## Tech Stack
+
 - **Next.js 16** (App Router)
 - **TypeScript**
-- **Ant Design 5** (Dark Theme)
-- **bpmn-js** (BPMN Diagram Viewer)
+- **React 19**
+- **Ant Design 5**
+- **bpmn-js**
+
+## Architecture
+
+The frontend talks to the **Platform Service** (BFF), not directly to the ingester.
+
+- **Local dev without reverse proxy**: set `NEXT_PUBLIC_PLATFORM_SERVICE_URL=http://localhost:8080`
+- **Docker / nginx / same-origin deployments**: leave `NEXT_PUBLIC_PLATFORM_SERVICE_URL` empty so the browser uses relative `/api/*` URLs
+
+WebSocket connections are also obtained through the BFF via `GET /api/runway/ws-token`.
+
 ## Getting Started
+
 ### Prerequisites
-- Node.js 18+ and npm
-- TaktX backend running on `http://localhost:8084`
+
+- Node.js 20+
+- npm
+- Platform Service running on `http://localhost:8080`
+
 ### Installation
+
 ```bash
 npm install
 ```
+
 ### Development
+
 ```bash
+cp .env.example .env.local
 npm run dev
 ```
+
 Open [http://localhost:3001](http://localhost:3001) in your browser.
-### Build
+
+### Production Build
+
 ```bash
 npm run build
 npm run start
 ```
+
 ## Environment Variables
+
 Copy `.env.example` to `.env.local`:
+
 ```bash
 cp .env.example .env.local
 ```
-Configure backend URL if different from default:
-```env
-NEXT_PUBLIC_TAKTX_BACKEND_URL=http://localhost:8084
-NEXT_PUBLIC_TAKTX_WS_URL=ws://localhost:8084/ws
+
+Typical local development values:
+
+```dotenv
+NEXT_PUBLIC_PLATFORM_SERVICE_URL=http://localhost:8080
+# NEXT_PUBLIC_TAKTX_WS_URL=ws://localhost:8084
 ```
+
 ## Project Structure
-```
+
+```text
 app/                    # Next.js App Router pages
-├── runway/            # Process monitoring and control
-└── page.tsx           # Community overview landing page
+├── runway/             # Runway monitoring and control pages
+└── page.tsx            # Landing page
 components/
-├── layout/            # Shell layout, navigation
-└── runway/            # Runway-specific components
+├── layout/             # Shell layout and navigation
+└── runway/             # Runway-specific UI components
 lib/
-├── api/               # API client functions
-├── hooks/             # React hooks
-└── config/            # Configuration
+├── api/                # REST API client functions
+├── config/             # Environment/config resolution
+├── hooks/              # React hooks
+└── utils/              # Shared helpers
 ```
-## Features
-### Runway - Process Monitoring
-- **Process Definition Viewer**
-  - Select process definitions from dropdown
-  - Choose specific version
-  - View BPMN diagram with auto-zoom
-### Coming Soon
-- Additional runway UX improvements
+
+## Key Features
+
+- Process definition browser
+- BPMN diagram rendering
+- Runway live monitoring
+- Same-origin deployment behind nginx to avoid CORS in production
+
 ## API Integration
-The frontend connects to the TaktX backend REST API:
-- `GET /processdefinitions` - List all process definition IDs
-- `GET /processdefinitions?id={id}` - Get versions for a definition
-- `GET /processdefinitions/{id}/version/{version}/xml` - Get BPMN XML
+
+The frontend calls the Platform Service API, typically under `/api/*`:
+
+- `GET /api/processdefinitions`
+- `GET /api/processdefinitions?id={id}`
+- `GET /api/processdefinitions/{id}/version/{version}/xml`
+- `GET /api/runway/ws-token`
+
 ## Development Notes
-- Dark theme is enabled by default via Ant Design's `darkAlgorithm`
+
+- Dark theme is configured via Ant Design
 - BPMN diagrams are rendered client-side using `bpmn-js`
-- All API calls use `fetch` with type-safe TypeScript interfaces
+- API base URL selection is centralized in `lib/config/env.ts`
+- `NEXT_PUBLIC_PLATFORM_SERVICE_URL` still has an active purpose for local-dev vs reverse-proxy deployments
+
 ## License
-Apache License 2.0
+
+This frontend is part of the Apache License 2.0 community edition. See the repository root [`LICENSE`](../../LICENSE) and [`NOTICE`](../../NOTICE).

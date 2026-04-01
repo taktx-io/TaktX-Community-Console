@@ -310,14 +310,11 @@ public class InstanceResource {
     }
   }
 
-  /**
-   * Cancel (abort) a single process instance by ID. Called by Platform Service BFF
-   */
+  /** Cancel (abort) a single process instance by ID. Called by Platform Service BFF */
   @POST
   @Path("/{id}/cancel")
   @Produces(MediaType.APPLICATION_JSON)
-  public Response cancelProcessInstance(
-      @PathParam("id") String instanceIdStr) {
+  public Response cancelProcessInstance(@PathParam("id") String instanceIdStr) {
     try {
       // Validate UUID format
       UUID instanceId;
@@ -384,8 +381,7 @@ public class InstanceResource {
   @Path("/cancel")
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  public Response cancelProcessInstances(
-      @Valid CancelInstancesRequest request) {
+  public Response cancelProcessInstances(@Valid CancelInstancesRequest request) {
     try {
       if (request.processInstanceIds() == null || request.processInstanceIds().isEmpty()) {
         return Response.status(Response.Status.BAD_REQUEST)

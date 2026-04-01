@@ -1,0 +1,41 @@
+TaktX Community Console
+Copyright 2026 TaktX-IO
+
+This product is licensed under the Apache License, Version 2.0 (the "License");
+you may not use this product except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+------------------------------------------------------------------------
+
+This product includes the following third-party software:
+
+Backend (Java / Quarkus)
+  - Quarkus (https://quarkus.io) — Apache License 2.0
+  - Apache Kafka Client (https://kafka.apache.org) — Apache License 2.0
+  - Eclipse Vert.x (https://vertx.io) — Apache License 2.0 / Eclipse Public License 2.0
+  - Hibernate ORM (https://hibernate.org) — GNU Lesser General Public License 2.1
+  - SmallRye (https://smallrye.io) — Apache License 2.0
+  - Mutiny (https://smallrye.io/smallrye-mutiny) — Apache License 2.0
+
+Frontend (Node.js / Next.js)
+  - Next.js (https://nextjs.org) — MIT License
+  - React (https://react.dev) — MIT License
+  - Ant Design (https://ant.design) — MIT License
+  - bpmn-js (https://bpmn.io) — bpmn.io License (based on MIT)
+  - NextAuth.js (https://next-auth.js.org) — ISC License
+
+Infrastructure
+  - Apache Kafka (https://kafka.apache.org) — Apache License 2.0
+  - Nginx (https://nginx.org) — BSD 2-Clause License
+  - Prometheus (https://prometheus.io) — Apache License 2.0
+  - Grafana (https://grafana.com) — GNU Affero General Public License 3.0
+
+The full text of each license is available in the respective project's repository.
+

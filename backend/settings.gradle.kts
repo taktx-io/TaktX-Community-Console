@@ -1,4 +1,4 @@
-rootProject.name = "taktx"
+rootProject.name = "TaktX Community Console"
 
 // include the ingesters parent and its child modules so the tree is:
 // :ingesters -> :ingesters:cassandra, :ingesters:inmemory

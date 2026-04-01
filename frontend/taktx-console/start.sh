@@ -1,16 +1,16 @@
 #!/bin/bash
-# TaktX Console - Quick Start Script
+# TaktX Community Console - Frontend Quick Start Script
 
 echo "🚀 Starting TaktX Console..."
 echo ""
 
-# Check if backend is running
-echo "📡 Checking backend..."
-if curl -s http://localhost:8084/processdefinitions > /dev/null; then
-    echo "✅ Backend is running on http://localhost:8084"
+# Check if platform service is running
+echo "📡 Checking Platform Service..."
+if curl -s http://localhost:8080/health/ready > /dev/null; then
+    echo "✅ Platform Service is running on http://localhost:8080"
 else
-    echo "❌ Backend is NOT running!"
-    echo "   Start it with: cd ../../../backend && ./gradlew :ingesters:inmemory:quarkusDev"
+    echo "❌ Platform Service is NOT running!"
+    echo "   Start it with: cd ../../../backend && ./gradlew :platform-service:quarkusDev"
     exit 1
 fi
 

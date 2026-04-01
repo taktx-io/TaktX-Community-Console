@@ -1,18 +1,18 @@
 #!/bin/bash
 #
-# TaktX Console Docker Compose Profile Examples
+# TaktX Community Console Docker Compose Profile Examples
 #
 # This script shows how to use different profiles
 #
 
 echo "=========================================="
-echo "TaktX Console - Docker Compose Profiles"
+echo "TaktX Community Console - Docker Compose Profiles"
 echo "=========================================="
 echo ""
 echo "Available Profiles:"
 echo "  - core          : Kafka only (always included)"
 echo "  - engine        : TaktX Engine"
-echo "  - console       : Console Backend + Frontend"
+echo "  - console       : Platform Service + Ingester + Frontend + Nginx"
 echo "  - observability : Prometheus + Grafana + Kafka UI"
 echo "  - full          : Everything (default)"
 echo ""
@@ -51,8 +51,10 @@ echo "engine:"
 echo "  - taktx           : Port 8079"
 echo ""
 echo "console:"
-echo "  - backend         : Port 8084"
-echo "  - frontend        : Port 3001"
+echo "  - taktx-platform-service  : Port 8080"
+echo "  - taktx-ingester-inmemory : Port 8084"
+echo "  - taktx-console-frontend  : Port 3001"
+echo "  - nginx                   : Port 3002"
 echo ""
 echo "observability:"
 echo "  - kafka-ui        : Port 8085"

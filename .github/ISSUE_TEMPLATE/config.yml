@@ -1,0 +1,9 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security policy
+    url: https://github.com/taktx-io/TaktX-Community-Console/blob/main/SECURITY.md
+    about: Please review the security policy before reporting vulnerabilities.
+  - name: Contributing guide
+    url: https://github.com/taktx-io/TaktX-Community-Console/blob/main/CONTRIBUTING.md
+    about: Review contribution guidelines, DCO, and development setup.
+

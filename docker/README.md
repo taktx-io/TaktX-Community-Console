@@ -1,13 +1,14 @@
-# TaktX Console - Docker Setup
+# TaktX Community Console - Docker Setup
 
-This document describes how to build and deploy the TaktX Console using Docker and Docker Compose.
+This document describes how to build and run the Apache 2.0 open-source TaktX Community Console using Docker Compose.
 
 ## Overview
 
-The TaktX Console consists of three main services:
-- **Backend**: Quarkus-based Java application that interfaces with the TaktX engine
+The TaktX Console consists of four main services:
+- **Platform Service**: Quarkus-based Java BFF (Backend for Frontend) that validates JWTs, manages process definitions and exposes the REST API to the frontend
+- **Ingester (In-Memory)**: Quarkus-based Java service that pushes data into the TaktX Engine via Kafka
 - **Frontend**: Next.js React application providing the UI
-- **Nginx** (Optional): Reverse proxy that eliminates CORS issues by serving frontend and backend from the same origin
+- **Nginx** (recommended): Reverse proxy that serves frontend and backend from the same origin, eliminating CORS
 
 ## Prerequisites
 
@@ -23,68 +24,65 @@ The nginx reverse proxy serves both frontend and backend from the same origin, c
 
 ```bash
 cd docker
-docker-compose --profile console up -d
+docker compose --profile console up -d
 ```
 
 **Access the application at: http://localhost:3002** ← Single entry point, no CORS! ✅
 
-See [NGINX_QUICKSTART.md](NGINX_QUICKSTART.md) for details.
+### Alternative: Direct Access
 
-### Alternative: Direct Access (CORS Enabled)
-
-For development or debugging, you can access services directly:
-
-```bash
-cd docker
-docker-compose --profile console up -d
-```
+For development or debugging, you can access services directly without going through nginx:
 
 - Frontend: http://localhost:3001
-- Backend: http://localhost:8084
-- Nginx: http://localhost:3002 (recommended)
+- Platform Service (BFF): http://localhost:8080
+- Ingester: http://localhost:8084
+- Nginx: http://localhost:3002 (recommended entry point)
 
-Note: Direct access requires CORS configuration.
+Note: Accessing the frontend directly at :3001 while the backend is at :8080 requires CORS to be enabled on the platform service.
 
 ## Architecture Options
 
 ### Option 1: Nginx Reverse Proxy (Recommended)
 ```
-Browser → Nginx (3002) → Frontend + Backend (same origin, no CORS)
+Browser → Nginx (3002) → Frontend + Platform Service (same origin, no CORS)
 ```
 ✅ Production-ready, no CORS issues, single entry point
 
 ### Option 2: Direct Access
 ```
 Browser → Frontend (3001)
-Browser → Backend (8084) ← Requires CORS
+Browser → Platform Service (8080) ← Requires CORS
 ```
-⚠️ Development/debugging only, CORS must be configured
-
-See [../docs/DOCKER_CORS_ANALYSIS.md](../docs/DOCKER_CORS_ANALYSIS.md) for detailed analysis.
+⚠️ Development/debugging only, CORS must be configured on the platform service
 
 ## Using Pre-built Images from GitHub Container Registry
 
-**Start Full Stack (including TaktX Engine):**
+**Start Full Stack (including TaktX Engine, observability tools):**
 ```bash
 cd docker
-docker-compose -f docker-compose-full.yaml up -d
+docker compose --profile full up -d
 ```
 
 **Start Console Only (without TaktX Engine):**
 ```bash
 cd docker
-docker-compose -f docker-compose-full.yaml up -d kafka taktx-ingester-inmemory taktx-console-frontend
+docker compose --profile console up -d
 ```
 
-This will start the TaktX Console services. The console backend only requires Kafka to be running - the TaktX Engine service is optional and runs independently.
+This starts:
+- Kafka (message broker) — required
+- TaktX Platform Service — BFF / REST API
+- TaktX Ingester (In-Memory) — Kafka producer
+- TaktX Console Frontend — UI
+- Nginx — reverse proxy
 
-**Services included:**
-- Kafka (message broker) - Required
-- TaktX Console Backend - Reads from Kafka topics
-- TaktX Console Frontend - Provides the UI
-- (Optional) TaktX Engine, Prometheus, Grafana, Cassandra
+Access the console at: http://localhost:3002
 
-Access the console at: http://localhost:3001
+**Start with observability tools (Kafka UI, Prometheus, Grafana):**
+```bash
+cd docker
+docker compose --profile console --profile observability up -d
+```
 
 ### Building Images Locally
 
@@ -92,31 +90,43 @@ To build the images locally instead of pulling from GHCR:
 
 ```bash
 cd docker
-docker-compose -f docker-compose-full.yaml build
-docker-compose -f docker-compose-full.yaml up -d
+docker compose --profile console up -d --build
 ```
 
 ## Docker Images
 
-### Backend Image
+### Platform Service Image
 
-**Repository**: `ghcr.io/taktx-io/taktx-console-backend`
+**Repository**: `ghcr.io/taktx-io/taktx-platform-service`
 
-**Base Image**: Eclipse Temurin 21 JDK (builder) / Eclipse Temurin 21 JRE (runtime)
-
-**Build Process**: 
-- Uses project's Gradle wrapper (8.14.3)
-- Builds Quarkus application with inmemory ingester
-- Multi-stage build for optimized image size
-
-**Build Arguments**: None
+**Build Process**:
+- Multi-stage Quarkus build using the project's Gradle wrapper
+- Builds the `platform-service` module
 
 **Environment Variables**:
-- `QUARKUS_HTTP_PORT` - HTTP port (default: 8084)
-- `QUARKUS_HTTP_CORS` - Enable CORS (default: true)
-- `QUARKUS_HTTP_CORS_ORIGINS` - Allowed CORS origins
-- `BOOTSTRAP_SERVERS` - Kafka bootstrap servers
-- `TAKTX_ENGINE_NAMESPACE` - TaktX namespace
+- `QUARKUS_HTTP_PORT` — HTTP port (default: `8080`)
+- `QUARKUS_HTTP_CORS_ENABLED` — Enable CORS (default: `false` when behind nginx)
+- `BOOTSTRAP_SERVERS` — Kafka bootstrap servers
+- `TAKTX_ENGINE_TENANT_ID` — TaktX tenant ID
+- `TAKTX_ENGINE_NAMESPACE` — TaktX namespace
+- `TAKTX_PLATFORM_INGESTER_URL` — Internal URL of the ingester service
+
+**Exposed Ports**: 8080
+
+### Ingester (In-Memory) Image
+
+**Repository**: `ghcr.io/taktx-io/taktx-ingester-inmemory`
+
+**Build Process**:
+- Multi-stage Quarkus build using the project's Gradle wrapper
+- Builds the `ingesters:inmemory` module
+
+**Environment Variables**:
+- `QUARKUS_HTTP_PORT` — HTTP port (default: `8084`)
+- `TAKTX_PLATFORM_URL` — Internal URL of the platform service
+- `BOOTSTRAP_SERVERS` — Kafka bootstrap servers
+- `TAKTX_ENGINE_TENANT_ID` — TaktX tenant ID (must match engine)
+- `TAKTX_ENGINE_NAMESPACE` — TaktX namespace (must match engine)
 
 **Exposed Ports**: 8084
 
@@ -125,80 +135,98 @@ docker-compose -f docker-compose-full.yaml up -d
 **Repository**: `ghcr.io/taktx-io/taktx-console-frontend`
 
 **Build Arguments**:
-- `NEXT_PUBLIC_TAKTX_BACKEND_URL` - Backend API URL (required at build time)
-- `NEXT_PUBLIC_TAKTX_WS_URL` - WebSocket URL (required at build time)
+- `NEXT_PUBLIC_PLATFORM_SERVICE_URL` — Platform Service URL baked in at build time.
+  Leave empty (default) when deploying behind nginx — the browser uses relative URLs
+  and nginx proxies `/api/*` to the platform service. Set to an absolute URL (e.g.
+  `http://localhost:8080`) only for builds that will run without a reverse proxy.
 
 **Environment Variables**:
-- `PORT` - HTTP port (default: 3000)
-- `NODE_ENV` - Node environment (default: production)
+- `PORT` — HTTP port (default: `3000`)
+- `NODE_ENV` — Node environment (default: `production`)
 
 **Exposed Ports**: 3000
 
 ## Building Images Manually
 
-### Backend
+### Platform Service
 
 ```bash
 cd backend
-docker build -t taktx-console-backend:local .
+docker build -f platform-service/Dockerfile -t taktx-platform-service:local .
+```
+
+### Ingester (In-Memory)
+
+```bash
+cd backend
+docker build -f ingesters/inmemory/Dockerfile -t taktx-ingester-inmemory:local .
 ```
 
 ### Frontend
 
 ```bash
 cd frontend
+# Default: empty URL → relative API calls via nginx (works on any domain)
+docker build -t taktx-console-frontend:local .
+
+# Or: explicit URL for builds that run without a reverse proxy
 docker build \
-  --build-arg NEXT_PUBLIC_TAKTX_BACKEND_URL=http://localhost:8084 \
-  --build-arg NEXT_PUBLIC_TAKTX_WS_URL=ws://localhost:8084/ws \
+  --build-arg NEXT_PUBLIC_PLATFORM_SERVICE_URL=http://localhost:8080 \
   -t taktx-console-frontend:local .
 ```
 
 ## CORS Configuration
 
-The backend is configured to handle CORS for cross-origin requests from the frontend. The default configuration allows:
+When using the nginx reverse proxy (recommended), CORS is not needed because the browser
+sees a single origin. The platform service has `QUARKUS_HTTP_CORS_ENABLED=false` by default.
 
-- **Origins**: `http://localhost:3000`, `http://taktx-console-frontend:3000`
-- **Methods**: GET, POST, PUT, DELETE, OPTIONS
-- **Headers**: Content-Type, Authorization
-- **Credentials**: true
-
-To customize CORS settings, modify the environment variables in `docker-compose-full.yaml`:
+For direct-access setups (no nginx), enable CORS on the platform service:
 
 ```yaml
 environment:
-  - QUARKUS_HTTP_CORS_ORIGINS=http://localhost:3000,http://example.com
+  - QUARKUS_HTTP_CORS_ENABLED=true
+  - QUARKUS_HTTP_CORS_ORIGINS=http://localhost:3001
 ```
 
 ## Networking
 
-All services run on the default Docker network created by docker-compose. The backend and frontend communicate using container names:
+All services run on the default Docker network created by Docker Compose. Services communicate using container names:
 
-- Frontend → Backend: Uses `NEXT_PUBLIC_TAKTX_BACKEND_URL` (defaults to localhost for browser access)
-- Backend → Kafka: Uses `kafka:9094`
-- Backend → TaktX Engine: Uses internal service name
+- Frontend → Platform Service: controlled by `NEXT_PUBLIC_PLATFORM_SERVICE_URL` build arg (empty = relative URLs via nginx)
+- Platform Service → Ingester: `http://taktx-ingester-inmemory:8084`
+- Platform Service → Kafka: `kafka:9094`
+- Ingester → Kafka: `kafka:9094`
 
 ## Development vs Production
 
 ### Local Development Mode (Native)
 
-For local development without Docker, use the native development servers:
+For local development without Docker, run the services natively:
 
-**1. Start Backend:**
+**1. Start Platform Service:**
+```bash
+cd backend
+./gradlew :platform-service:quarkusDev
+```
+Platform Service will run at: http://localhost:8080
+
+**2. Start Ingester:**
 ```bash
 cd backend
 ./gradlew :ingesters:inmemory:quarkusDev
 ```
-Backend will run at: http://localhost:8084
+Ingester will run at: http://localhost:8084
 
-**2. Start Frontend:**
+**3. Start Frontend:**
 ```bash
 cd frontend/taktx-console
 npm run dev
 ```
-Frontend will run at: http://localhost:3000
+Frontend will run at: http://localhost:3001
 
 **Configuration:**
-The frontend is pre-configured to connect to `http://localhost:8084` by default. If you need to change this:
+
+The frontend needs to know where the platform service is. In local dev there is no nginx, so you must set the URL explicitly:
 
 1. Copy the example environment file:
    ```bash
@@ -206,15 +234,12 @@ The frontend is pre-configured to connect to `http://localhost:8084` by default.
    cp .env.example .env.local
    ```
 
-2. Edit `.env.local` to customize:
+2. Ensure `.env.local` contains:
    ```dotenv
-   NEXT_PUBLIC_TAKTX_BACKEND_URL=http://localhost:8084
-   NEXT_PUBLIC_TAKTX_WS_URL=ws://localhost:8084/ws
+   NEXT_PUBLIC_PLATFORM_SERVICE_URL=http://localhost:8080
    ```
 
-3. Restart the frontend dev server
-
-**Note:** The `.env.local` file is already created for you with the correct defaults. The frontend will automatically use these values in development mode.
+3. Restart the frontend dev server.
 
 ### Production Mode (Docker)
 
@@ -230,48 +255,53 @@ Use Docker Compose as described above. The images are optimized for production w
 
 Check Kafka connectivity:
 ```bash
-docker-compose logs kafka
-docker-compose logs taktx-console-backend
+docker compose logs kafka
+docker compose logs taktx-platform-service
+docker compose logs taktx-ingester-inmemory
 ```
 
 ### Frontend can't connect to backend
 
-1. Verify the backend is running:
+1. Verify the platform service is running and healthy:
 ```bash
-curl http://localhost:8084/processdefinitions
+curl http://localhost:8080/health/ready
 ```
 
-2. Check CORS configuration in the browser console
+2. If not using nginx, check that CORS is enabled on the platform service.
 
-3. Verify environment variables:
+3. Verify environment variables in the running container:
 ```bash
-docker-compose exec taktx-console-frontend env | grep NEXT_PUBLIC
+docker compose exec taktx-console-frontend env | grep NEXT_PUBLIC
 ```
 
 ### WebSocket connection issues
 
-Ensure the WebSocket URL is correctly configured:
-- For browser access: `ws://localhost:8084/ws`
-- For container-to-container: `ws://taktx-console-backend:8084/ws`
+WebSocket connections are established via a BFF token exchange:
+1. The frontend calls `GET /api/runway/ws-token` on the platform service to obtain a short-lived token and WebSocket URL.
+2. The frontend opens the WebSocket using that URL and token.
 
-## Publishing to GitHub Container Registry
+In Docker (nginx mode) all traffic is proxied from the same origin — no extra configuration needed.
+In local dev mode, ensure `NEXT_PUBLIC_PLATFORM_SERVICE_URL=http://localhost:8080` is set in `.env.local`.
 
-Images are automatically built and published to GHCR when:
-- Code is pushed to `main` or `develop` branches
-- A version tag (e.g., `v1.0.0`) is created
-- A pull request is created (build only, no push)
+## Image Publishing
 
-The workflow is defined in `.github/workflows/docker-publish.yml`.
+The compose file defaults to pulling images from GitHub Container Registry under:
+
+- `ghcr.io/taktx-io/taktx-platform-service`
+- `ghcr.io/taktx-io/taktx-ingester-inmemory`
+- `ghcr.io/taktx-io/taktx-console-frontend`
+
+If you build locally, `docker compose ... --build` uses the checked-out source tree instead.
 
 ## Security Considerations
 
-1. **Non-root users**: Both images run as non-root users
+1. **Non-root users**: All images run as non-root users
 2. **Secrets**: Never include sensitive data in images
-3. **CORS**: Restrict CORS origins in production
+3. **CORS**: Keep `QUARKUS_HTTP_CORS_ENABLED=false` behind a reverse proxy; restrict origins when enabling
 4. **Network**: Use Docker networks to isolate services
 5. **Updates**: Regularly update base images and dependencies
 
 ## License
 
-See the main LICENSE file for details.
+This repository is licensed under the Apache License 2.0. See the root [`LICENSE`](../LICENSE) and [`NOTICE`](../NOTICE) files for details.
 
