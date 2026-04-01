@@ -4,7 +4,7 @@ This document describes how to build and run the Apache 2.0 open-source TaktX Co
 
 ## Overview
 
-The TaktX Console consists of four main services:
+The TaktX Community Console consists of four main services:
 - **Platform Service**: Quarkus-based Java BFF (Backend for Frontend) that validates JWTs, manages process definitions and exposes the REST API to the frontend
 - **Ingester (In-Memory)**: Quarkus-based Java service that pushes data into the TaktX Engine via Kafka
 - **Frontend**: Next.js React application providing the UI
@@ -73,7 +73,7 @@ This starts:
 - Kafka (message broker) — required
 - TaktX Platform Service — BFF / REST API
 - TaktX Ingester (In-Memory) — Kafka producer
-- TaktX Console Frontend — UI
+- TaktX Community Console Frontend — UI
 - Nginx — reverse proxy
 
 Access the console at: http://localhost:3002
@@ -97,7 +97,7 @@ docker compose --profile console up -d --build
 
 ### Platform Service Image
 
-**Repository**: `ghcr.io/taktx-io/taktx-platform-service`
+**Repository**: `ghcr.io/taktx-io/taktx-community-platform-service`
 
 **Build Process**:
 - Multi-stage Quarkus build using the project's Gradle wrapper
@@ -115,7 +115,7 @@ docker compose --profile console up -d --build
 
 ### Ingester (In-Memory) Image
 
-**Repository**: `ghcr.io/taktx-io/taktx-ingester-inmemory`
+**Repository**: `ghcr.io/taktx-io/taktx-community-ingester-inmemory`
 
 **Build Process**:
 - Multi-stage Quarkus build using the project's Gradle wrapper
@@ -132,7 +132,7 @@ docker compose --profile console up -d --build
 
 ### Frontend Image
 
-**Repository**: `ghcr.io/taktx-io/taktx-console-frontend`
+**Repository**: `ghcr.io/taktx-io/taktx-community-console-frontend`
 
 **Build Arguments**:
 - `NEXT_PUBLIC_PLATFORM_SERVICE_URL` — Platform Service URL baked in at build time.
@@ -152,14 +152,14 @@ docker compose --profile console up -d --build
 
 ```bash
 cd backend
-docker build -f platform-service/Dockerfile -t taktx-platform-service:local .
+docker build -f platform-service/Dockerfile -t taktx-community-platform-service:local .
 ```
 
 ### Ingester (In-Memory)
 
 ```bash
 cd backend
-docker build -f ingesters/inmemory/Dockerfile -t taktx-ingester-inmemory:local .
+docker build -f ingesters/inmemory/Dockerfile -t taktx-community-ingester-inmemory:local .
 ```
 
 ### Frontend
@@ -167,12 +167,12 @@ docker build -f ingesters/inmemory/Dockerfile -t taktx-ingester-inmemory:local .
 ```bash
 cd frontend
 # Default: empty URL → relative API calls via nginx (works on any domain)
-docker build -t taktx-console-frontend:local .
+docker build -t taktx-community-console-frontend:local .
 
 # Or: explicit URL for builds that run without a reverse proxy
 docker build \
   --build-arg NEXT_PUBLIC_PLATFORM_SERVICE_URL=http://localhost:8080 \
-  -t taktx-console-frontend:local .
+  -t taktx-community-console-frontend:local .
 ```
 
 ## CORS Configuration
@@ -287,9 +287,9 @@ In local dev mode, ensure `NEXT_PUBLIC_PLATFORM_SERVICE_URL=http://localhost:808
 
 The compose file defaults to pulling images from GitHub Container Registry under:
 
-- `ghcr.io/taktx-io/taktx-platform-service`
-- `ghcr.io/taktx-io/taktx-ingester-inmemory`
-- `ghcr.io/taktx-io/taktx-console-frontend`
+- `ghcr.io/taktx-io/taktx-community-platform-service`
+- `ghcr.io/taktx-io/taktx-community-ingester-inmemory`
+- `ghcr.io/taktx-io/taktx-community-console-frontend`
 
 If you build locally, `docker compose ... --build` uses the checked-out source tree instead.
 

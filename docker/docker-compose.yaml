@@ -102,7 +102,7 @@ services:
   taktx-platform-service:
     # Build locally with: docker compose --profile console up --build
     # Pull from registry: docker compose --profile console up  (no --build)
-    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-platform-service:${IMAGE_TAG:-0.2.0-beta-5}
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-community-platform-service:${IMAGE_TAG:-0.2.0-beta-5}
     profiles:
       - console
       - full
@@ -133,7 +133,7 @@ services:
   taktx-ingester-inmemory:
     # Build locally with: docker compose --profile console up --build
     # Pull from registry: docker compose --profile console up  (no --build)
-    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-ingester-inmemory:${IMAGE_TAG:-0.2.0-beta-5}
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-community-ingester-inmemory:${IMAGE_TAG:-0.2.0-beta-5}
     profiles:
       - console
       - full
@@ -170,7 +170,7 @@ services:
   taktx-console-frontend:
     # Build locally with: docker compose --profile console up --build
     # Pull from registry: docker compose --profile console up  (no --build)
-    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-console-frontend:${IMAGE_TAG:-0.2.0-beta-5}
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-community-console-frontend:${IMAGE_TAG:-0.2.0-beta-5}
     profiles:
       - console
       - full

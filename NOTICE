@@ -14,28 +14,36 @@ specific language governing permissions and limitations under the License.
 
 ------------------------------------------------------------------------
 
-This product includes the following third-party software:
+This product includes the following third-party software that is directly declared
+in the current manifests and/or bundled through the Docker Compose stack.
+This list is informational and not intended to be an exhaustive inventory of all
+transitive dependencies.
 
 Backend (Java / Quarkus)
   - Quarkus (https://quarkus.io) — Apache License 2.0
   - Apache Kafka Client (https://kafka.apache.org) — Apache License 2.0
   - Eclipse Vert.x (https://vertx.io) — Apache License 2.0 / Eclipse Public License 2.0
-  - Hibernate ORM (https://hibernate.org) — GNU Lesser General Public License 2.1
+  - Hibernate Validator (https://hibernate.org/validator/) — Apache License 2.0
   - SmallRye (https://smallrye.io) — Apache License 2.0
   - Mutiny (https://smallrye.io/smallrye-mutiny) — Apache License 2.0
+  - JJWT (https://github.com/jwtk/jjwt) — Apache License 2.0
 
 Frontend (Node.js / Next.js)
   - Next.js (https://nextjs.org) — MIT License
   - React (https://react.dev) — MIT License
+  - React DOM (https://react.dev) — MIT License
   - Ant Design (https://ant.design) — MIT License
-  - bpmn-js (https://bpmn.io) — bpmn.io License (based on MIT)
-  - NextAuth.js (https://next-auth.js.org) — ISC License
+  - Ant Design Next.js Registry (https://github.com/ant-design/nextjs-registry) — MIT License
+  - bpmn-js (https://bpmn.io) — see upstream project license
+  - react-colorful (https://github.com/omgovich/react-colorful) — MIT License
 
-Infrastructure
+Infrastructure / bundled images
   - Apache Kafka (https://kafka.apache.org) — Apache License 2.0
+  - Kafka UI (https://github.com/provectus/kafka-ui) — Apache License 2.0
   - Nginx (https://nginx.org) — BSD 2-Clause License
   - Prometheus (https://prometheus.io) — Apache License 2.0
   - Grafana (https://grafana.com) — GNU Affero General Public License 3.0
 
-The full text of each license is available in the respective project's repository.
+The full text of each license is available in the respective project's repository
+or distributed artifact metadata.
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Build and push TaktX Console images to GitHub Container Registry
+# Build and push TaktX Community Console images to GitHub Container Registry
 #
 
 set -e
@@ -28,12 +28,12 @@ REGISTRY="${DOCKER_REGISTRY:-ghcr.io}"
 ORG="${DOCKER_ORG:-taktx-io}"
 TAG="${IMAGE_TAG:-latest}"
 
-INGESTER_IMAGE="${REGISTRY}/${ORG}/taktx-ingester-inmemory:${TAG}"
-PLATFORM_IMAGE="${REGISTRY}/${ORG}/taktx-platform-service:${TAG}"
-FRONTEND_IMAGE="${REGISTRY}/${ORG}/taktx-console-frontend:${TAG}"
+INGESTER_IMAGE="${REGISTRY}/${ORG}/taktx-community-ingester-inmemory:${TAG}"
+PLATFORM_IMAGE="${REGISTRY}/${ORG}/taktx-community-platform-service:${TAG}"
+FRONTEND_IMAGE="${REGISTRY}/${ORG}/taktx-community-console-frontend:${TAG}"
 
 echo "=========================================="
-echo "Push TaktX Console Images to GHCR"
+echo "Push TaktX Community Console Images to GHCR"
 echo "=========================================="
 echo ""
 echo "Configuration:"
@@ -65,35 +65,35 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-log_info "Building taktx-ingester-inmemory..."
+log_info "Building taktx-community-ingester-inmemory..."
 docker build \
     -t "${INGESTER_IMAGE}" \
     -f "${PROJECT_ROOT}/backend/ingesters/inmemory/Dockerfile" \
     "${PROJECT_ROOT}/backend"
 
-log_info "Building taktx-platform-service..."
+log_info "Building taktx-community-platform-service..."
 docker build \
     -t "${PLATFORM_IMAGE}" \
     -f "${PROJECT_ROOT}/backend/platform-service/Dockerfile" \
     "${PROJECT_ROOT}/backend"
 
-log_info "Building taktx-console-frontend..."
+log_info "Building taktx-community-console-frontend..."
 docker build \
     -t "${FRONTEND_IMAGE}" \
     -f "${PROJECT_ROOT}/frontend/Dockerfile" \
     "${PROJECT_ROOT}/frontend"
 
 log_info "Images built and tagged:"
-docker images | grep -E "taktx-ingester-inmemory|taktx-platform-service|taktx-console-frontend"
+docker images | grep -E "taktx-community-ingester-inmemory|taktx-community-platform-service|taktx-community-console-frontend"
 
 # Push images
-log_info "Pushing taktx-ingester-inmemory..."
+log_info "Pushing taktx-community-ingester-inmemory..."
 docker push "${INGESTER_IMAGE}"
 
-log_info "Pushing taktx-platform-service..."
+log_info "Pushing taktx-community-platform-service..."
 docker push "${PLATFORM_IMAGE}"
 
-log_info "Pushing taktx-console-frontend..."
+log_info "Pushing taktx-community-console-frontend..."
 docker push "${FRONTEND_IMAGE}"
 
 echo ""

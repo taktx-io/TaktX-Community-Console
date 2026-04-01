@@ -1,7 +1,7 @@
 #!/bin/bash
 # TaktX Community Console - Frontend Quick Start Script
 
-echo "🚀 Starting TaktX Console..."
+echo "🚀 Starting TaktX Community Console..."
 echo ""
 
 # Check if platform service is running

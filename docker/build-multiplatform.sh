@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Build TaktX Console images for multiple platforms (amd64 + arm64)
+# Build TaktX Community Console images for multiple platforms (amd64 + arm64)
 #
 # This script builds Docker images for both linux/amd64 and linux/arm64 platforms.
 # WARNING: This can take 30-60 minutes due to QEMU emulation for cross-platform builds.
@@ -37,9 +37,9 @@ PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 PUSH="${PUSH:-true}"
 TAG="${TAG:-latest}"
 
-INGESTER_IMAGE="${REGISTRY}/${ORG}/taktx-ingester-inmemory:${TAG}"
-PLATFORM_IMAGE="${REGISTRY}/${ORG}/taktx-platform-service:${TAG}"
-FRONTEND_IMAGE="${REGISTRY}/${ORG}/taktx-console-frontend:${TAG}"
+INGESTER_IMAGE="${REGISTRY}/${ORG}/taktx-community-ingester-inmemory:${TAG}"
+PLATFORM_IMAGE="${REGISTRY}/${ORG}/taktx-community-platform-service:${TAG}"
+FRONTEND_IMAGE="${REGISTRY}/${ORG}/taktx-community-console-frontend:${TAG}"
 
 echo "=========================================="
 echo "Multi-Platform Docker Build"

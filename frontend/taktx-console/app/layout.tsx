@@ -7,8 +7,8 @@ import AntdClientSetup from '@/components/AntdClientSetup';
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TaktX Console",
-  description: "Process monitoring and management console for TaktX",
+  title: "TaktX Community Console",
+  description: "Open-source process monitoring and management console for TaktX",
   icons: {
     icon: '/favicon.png',
   },

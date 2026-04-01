@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Multi-stage build for TaktX Console Frontend
+# Multi-stage build for TaktX Community Console Frontend
 #
 # Usage:
 #   docker compose --profile console up --build
