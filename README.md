@@ -86,6 +86,31 @@ Open **http://localhost:3002** in your browser.
 > Note: this stack uses the in-memory community ingester. Restarting the ingester
 > resets its stored data/configuration.
 
+### Adaptive retention in the in-memory ingester
+
+The community ingester uses adaptive in-memory retention so it does not grow
+ forever without bound.
+
+- Only **terminal, incident-free** instances are eligible for eviction:
+  - `COMPLETED`
+  - `ABORTED`
+- Active instances are retained.
+- Terminal instances with an incident are retained.
+- Eviction runs on a periodic sweep and removes the **oldest eligible terminal
+  instances first**.
+- Retention is triggered when heap pressure is high or retained state exceeds its
+  configured caps.
+
+This means old completed/aborted instances may disappear from the Runway view over
+ time even while the ingester stays up. With the default settings in
+ `backend/ingesters/inmemory/src/main/resources/application.properties`, an eligible
+ instance must be terminal for at least **5 minutes** and is then removed on a later
+ retention sweep **only if** the ingester is above one of its retention thresholds.
+
+For configuration details, see [`backend/README.md`](backend/README.md). For Docker
+ usage, env-var overrides, and a fast manual-test recipe, see
+ [`docker/README.md`](docker/README.md).
+
 ### Run the full stack (console + TaktX Engine + observability)
 
 ```bash

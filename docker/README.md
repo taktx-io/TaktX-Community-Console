@@ -118,6 +118,125 @@ cd docker
 docker compose --profile console up -d --build
 ```
 
+## Adaptive retention
+
+The community ingester keeps runtime state in memory for Runway/API queries, but it
+ also applies **adaptive retention** to prevent unbounded growth.
+
+### Retention behavior
+
+- only `COMPLETED` and `ABORTED` instances are eviction candidates
+- candidates must be **incident-free**
+- the ingester evicts the **oldest eligible terminal instances first**
+- eviction runs on a periodic sweep
+- eviction only happens when heap pressure is high or retained state exceeds the
+  configured caps
+
+With the default settings, an eligible terminal instance must remain terminal for at
+ least `PT5M` and is then removed on a later sweep **only if** retention pressure is
+ present.
+
+### Retention settings
+
+The ingester supports these retention environment variables:
+
+- `TAKTX_INGESTER_RETENTION_ENABLED`
+- `TAKTX_INGESTER_RETENTION_CHECK_INTERVAL`
+- `TAKTX_INGESTER_RETENTION_HEAP_TARGET_WATERMARK`
+- `TAKTX_INGESTER_RETENTION_HEAP_HIGH_WATERMARK`
+- `TAKTX_INGESTER_RETENTION_MIN_TERMINAL_INSTANCES`
+- `TAKTX_INGESTER_RETENTION_MAX_TERMINAL_INSTANCES`
+- `TAKTX_INGESTER_RETENTION_MIN_FLOW_NODE_UPDATES`
+- `TAKTX_INGESTER_RETENTION_MAX_FLOW_NODE_UPDATES`
+- `TAKTX_INGESTER_RETENTION_MIN_RETAINED_BYTES`
+- `TAKTX_INGESTER_RETENTION_MAX_RETAINED_BYTES`
+- `TAKTX_INGESTER_RETENTION_EVICT_BATCH_SIZE`
+- `TAKTX_INGESTER_RETENTION_MIN_TERMINAL_AGE`
+
+See [`../backend/README.md`](../backend/README.md) for the default values and a more
+ detailed explanation of each setting.
+
+### Important Docker Compose caveat
+
+The checked-in [`docker-compose.yaml`](docker-compose.yaml) currently passes only the
+ core ingester settings into the `taktx-ingester-inmemory` container. Exporting the
+ retention env vars in your shell is **not enough by itself** unless you also expose
+ them through Docker Compose.
+
+The cleanest way is to create a local override file and add the retention variables
+ there.
+
+### Example: fast local retention demo
+
+Create `docker/docker-compose.retention-demo.yaml` with the following content:
+
+```yaml
+services:
+  taktx-ingester-inmemory:
+    environment:
+      TAKTX_INGESTER_RETENTION_ENABLED: "true"
+      TAKTX_INGESTER_RETENTION_CHECK_INTERVAL: PT1S
+      TAKTX_INGESTER_RETENTION_MIN_TERMINAL_AGE: PT2S
+      TAKTX_INGESTER_RETENTION_EVICT_BATCH_SIZE: "10"
+      TAKTX_INGESTER_RETENTION_MIN_TERMINAL_INSTANCES: "2"
+      TAKTX_INGESTER_RETENTION_MAX_TERMINAL_INSTANCES: "2"
+      TAKTX_INGESTER_RETENTION_MIN_FLOW_NODE_UPDATES: "1000000"
+      TAKTX_INGESTER_RETENTION_MAX_FLOW_NODE_UPDATES: "1000000"
+      TAKTX_INGESTER_RETENTION_MIN_RETAINED_BYTES: "1073741824"
+      TAKTX_INGESTER_RETENTION_MAX_RETAINED_BYTES: "1073741824"
+```
+
+Then start the stack with both files:
+
+```bash
+cd docker
+docker compose -f docker-compose.yaml -f docker-compose.retention-demo.yaml --profile console up -d --build
+```
+
+With that demo configuration:
+
+- retention checks every second
+- a terminal instance becomes eligible after about two seconds
+- only two incident-free terminal instances are retained
+
+If you complete or abort three short-lived instances, the oldest eligible one should
+ usually disappear after roughly **2-3 seconds**, leaving the newest two terminal,
+ incident-free instances visible.
+
+### Alternative: pass through shell environment variables
+
+If you prefer to `export` values first and then run `docker compose`, update the
+ `taktx-ingester-inmemory.environment` section in [`docker-compose.yaml`](docker-compose.yaml)
+ so it forwards the retention variables into the container. Example entries:
+
+```yaml
+    environment:
+      - TAKTX_INGESTER_RETENTION_ENABLED
+      - TAKTX_INGESTER_RETENTION_CHECK_INTERVAL
+      - TAKTX_INGESTER_RETENTION_MIN_TERMINAL_AGE
+      - TAKTX_INGESTER_RETENTION_EVICT_BATCH_SIZE
+      - TAKTX_INGESTER_RETENTION_MIN_TERMINAL_INSTANCES
+      - TAKTX_INGESTER_RETENTION_MAX_TERMINAL_INSTANCES
+      - TAKTX_INGESTER_RETENTION_MIN_FLOW_NODE_UPDATES
+      - TAKTX_INGESTER_RETENTION_MAX_FLOW_NODE_UPDATES
+      - TAKTX_INGESTER_RETENTION_MIN_RETAINED_BYTES
+      - TAKTX_INGESTER_RETENTION_MAX_RETAINED_BYTES
+      - TAKTX_INGESTER_RETENTION_HEAP_TARGET_WATERMARK
+      - TAKTX_INGESTER_RETENTION_HEAP_HIGH_WATERMARK
+```
+
+After that, a workflow like this works as expected:
+
+```bash
+export TAKTX_INGESTER_RETENTION_CHECK_INTERVAL=PT1S
+export TAKTX_INGESTER_RETENTION_MIN_TERMINAL_AGE=PT2S
+export TAKTX_INGESTER_RETENTION_MIN_TERMINAL_INSTANCES=2
+export TAKTX_INGESTER_RETENTION_MAX_TERMINAL_INSTANCES=2
+
+cd docker
+docker compose --profile console up -d --build
+```
+
 ## Docker Images
 
 ### Platform Service Image
@@ -152,6 +271,7 @@ docker compose --profile console up -d --build
 - `BOOTSTRAP_SERVERS` — Kafka bootstrap servers
 - `TAKTX_ENGINE_TENANT_ID` — TaktX tenant ID (must match engine)
 - `TAKTX_ENGINE_NAMESPACE` — TaktX namespace (must match engine)
+- `TAKTX_INGESTER_RETENTION_*` — Optional adaptive retention tuning variables (see [Adaptive retention](#adaptive-retention))
 
 **Exposed Ports**: 8084
 
