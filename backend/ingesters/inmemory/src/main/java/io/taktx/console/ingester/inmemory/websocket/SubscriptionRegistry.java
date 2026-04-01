@@ -8,7 +8,7 @@
 
 package io.taktx.console.ingester.inmemory.websocket;
 
-import io.taktx.console.ingester.inmemory.InstanceUpdateRegistry;
+import io.taktx.console.ingester.inmemory.IngestionStore;
 import io.taktx.console.ingester.inmemory.ProcessInstanceView;
 import io.taktx.dto.ProcessDefinitionKey;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -30,7 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 @ApplicationScoped
 public class SubscriptionRegistry {
 
-  @Inject InstanceUpdateRegistry instanceUpdateRegistry;
+  @Inject IngestionStore ingestionStore;
 
   // Global subscribers (subscribe-all)
   private final Set<Session> globalSubscribers = new CopyOnWriteArraySet<>();
@@ -166,7 +166,7 @@ public class SubscriptionRegistry {
    * determine which definition it belongs to.
    */
   public ProcessDefinitionKey getInstanceDefinitionKey(UUID instanceId) {
-    ProcessInstanceView view = instanceUpdateRegistry.getProcessInstanceById(instanceId);
+    ProcessInstanceView view = ingestionStore.getProcessInstanceById(instanceId);
     if (view != null) {
       return new ProcessDefinitionKey(view.getProcessDefinitionId(), view.getVersion());
     }

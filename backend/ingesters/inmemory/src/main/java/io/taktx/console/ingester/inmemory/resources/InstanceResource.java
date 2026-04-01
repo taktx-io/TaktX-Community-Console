@@ -10,7 +10,7 @@ package io.taktx.console.ingester.inmemory.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.taktx.client.TaktXClient;
-import io.taktx.console.ingester.inmemory.InstanceUpdateRegistry;
+import io.taktx.console.ingester.inmemory.IngestionStore;
 import io.taktx.console.ingester.inmemory.OrderDirection;
 import io.taktx.console.ingester.inmemory.ProcessInstanceView;
 import io.taktx.dto.ExecutionState;
@@ -43,7 +43,7 @@ public class InstanceResource {
   private static final String INVALID_PROCESS_INSTANCE_ID_FORMAT =
       "Invalid process instance ID format";
 
-  @Inject InstanceUpdateRegistry instanceUpdateRegistry;
+  @Inject IngestionStore ingestionStore;
 
   @Inject TaktXClient taktClient;
 
@@ -193,8 +193,7 @@ public class InstanceResource {
 
       // Execute generic query
       var page =
-          instanceUpdateRegistry.queryProcessInstances(
-              criteria, startIdx, limitVal, orderByType, orderDir);
+          ingestionStore.queryProcessInstances(criteria, startIdx, limitVal, orderByType, orderDir);
 
       return Response.ok(JsonUtils.toJsonStringWithFieldNames(page)).build();
 
@@ -233,8 +232,7 @@ public class InstanceResource {
       }
 
       UUID processInstanceId = UUID.fromString(sanitized);
-      ProcessInstanceView instance =
-          instanceUpdateRegistry.getProcessInstanceById(processInstanceId);
+      ProcessInstanceView instance = ingestionStore.getProcessInstanceById(processInstanceId);
 
       if (instance == null) {
         return Response.status(Response.Status.NOT_FOUND)
@@ -269,7 +267,7 @@ public class InstanceResource {
 
       // Return all flow node instances (deduplicated by path, showing latest state only)
       List<TimedFlowNodeInstance> flowNodes =
-          instanceUpdateRegistry.getFlowNodeInstancesByProcessInstance(processInstanceId);
+          ingestionStore.getFlowNodeInstancesByProcessInstance(processInstanceId);
 
       return Response.ok(JsonUtils.toJsonStringWithFieldNames(flowNodes)).build();
     } catch (IllegalArgumentException e) {
@@ -296,8 +294,7 @@ public class InstanceResource {
     try {
       UUID processInstanceId = UUID.fromString(processInstanceIdStr.trim());
 
-      Map<String, JsonNode> variables =
-          instanceUpdateRegistry.getProcessVariables(processInstanceId);
+      Map<String, JsonNode> variables = ingestionStore.getProcessVariables(processInstanceId);
 
       return Response.ok(JsonUtils.toJsonStringWithFieldNames(variables)).build();
     } catch (IllegalArgumentException e) {
@@ -327,7 +324,7 @@ public class InstanceResource {
       }
 
       // Check if instance exists and is ACTIVE
-      ProcessInstanceView instance = instanceUpdateRegistry.getProcessInstanceById(instanceId);
+      ProcessInstanceView instance = ingestionStore.getProcessInstanceById(instanceId);
 
       if (instance == null) {
         return Response.status(Response.Status.NOT_FOUND)
@@ -409,7 +406,7 @@ public class InstanceResource {
           UUID instanceId = UUID.fromString(instanceIdStr.trim());
 
           // Check if instance exists and is ACTIVE
-          ProcessInstanceView instance = instanceUpdateRegistry.getProcessInstanceById(instanceId);
+          ProcessInstanceView instance = ingestionStore.getProcessInstanceById(instanceId);
 
           if (instance == null) {
             failures.add(new CancelFailure(instanceIdStr, "Instance not found"));
@@ -482,7 +479,7 @@ public class InstanceResource {
       for (String instanceIdStr : request.instanceIds()) {
         try {
           UUID instanceId = UUID.fromString(instanceIdStr.trim());
-          ProcessInstanceView instance = instanceUpdateRegistry.getProcessInstanceById(instanceId);
+          ProcessInstanceView instance = ingestionStore.getProcessInstanceById(instanceId);
 
           String state = instance != null ? instance.getState().toString() : "NOT_FOUND";
 
@@ -555,7 +552,7 @@ public class InstanceResource {
 
       // Query instances matching filter (streaming for efficiency)
       List<ProcessInstanceView> matchingInstances =
-          instanceUpdateRegistry
+          ingestionStore
               .queryProcessInstances(
                   criteria,
                   0, // start
@@ -681,7 +678,7 @@ public class InstanceResource {
 
       // Query with limit 0 to get just the count
       List<ProcessInstanceView> matchingInstances =
-          instanceUpdateRegistry
+          ingestionStore
               .queryProcessInstances(
                   request.filter(),
                   0,

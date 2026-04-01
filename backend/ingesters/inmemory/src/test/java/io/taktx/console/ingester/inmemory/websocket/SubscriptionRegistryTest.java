@@ -8,7 +8,7 @@ package io.taktx.console.ingester.inmemory.websocket;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import io.taktx.console.ingester.inmemory.InstanceUpdateRegistry;
+import io.taktx.console.ingester.inmemory.IngestionStore;
 import io.taktx.console.ingester.inmemory.ProcessInstanceView;
 import io.taktx.dto.ExecutionState;
 import io.taktx.dto.ProcessDefinitionKey;
@@ -26,7 +26,7 @@ import org.mockito.Mockito;
 class SubscriptionRegistryTest {
 
   private SubscriptionRegistry registry;
-  private InstanceUpdateRegistry instanceRegistry;
+  private IngestionStore ingestionStore;
   private Session session1;
   private Session session2;
   private ProcessDefinitionKey orderV1;
@@ -35,9 +35,9 @@ class SubscriptionRegistryTest {
 
   @BeforeEach
   void setUp() {
-    instanceRegistry = mock(InstanceUpdateRegistry.class);
+    ingestionStore = mock(IngestionStore.class);
     registry = new SubscriptionRegistry();
-    registry.instanceUpdateRegistry = instanceRegistry;
+    registry.ingestionStore = ingestionStore;
 
     session1 = Mockito.mock(Session.class);
     session2 = Mockito.mock(Session.class);
@@ -177,7 +177,7 @@ class SubscriptionRegistryTest {
             .version(1)
             .state(ExecutionState.ACTIVE)
             .build();
-    when(instanceRegistry.getProcessInstanceById(instance1)).thenReturn(view);
+    when(ingestionStore.getProcessInstanceById(instance1)).thenReturn(view);
 
     // When: Look up definition key
     ProcessDefinitionKey key = registry.getInstanceDefinitionKey(instance1);
@@ -191,7 +191,7 @@ class SubscriptionRegistryTest {
   @Test
   void shouldReturnNullForUnknownInstance() {
     // Given: Instance not found
-    when(instanceRegistry.getProcessInstanceById(instance1)).thenReturn(null);
+    when(ingestionStore.getProcessInstanceById(instance1)).thenReturn(null);
 
     // When: Look up definition key
     ProcessDefinitionKey key = registry.getInstanceDefinitionKey(instance1);

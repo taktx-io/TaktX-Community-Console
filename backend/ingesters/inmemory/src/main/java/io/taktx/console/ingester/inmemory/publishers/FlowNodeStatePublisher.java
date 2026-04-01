@@ -10,6 +10,7 @@ package io.taktx.console.ingester.inmemory.publishers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.taktx.console.ingester.inmemory.metrics.FlowNodeStateAggregator;
+import io.taktx.console.ingester.inmemory.resources.TimedFlowNodeInstance;
 import io.taktx.console.ingester.inmemory.websocket.FlowNodeStateTracker;
 import io.taktx.console.ingester.inmemory.websocket.ProcessDefinitionAggregateStateMessage;
 import io.taktx.console.ingester.inmemory.websocket.ProcessInstanceStateMessage;
@@ -20,6 +21,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.websocket.Session;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -174,6 +176,12 @@ public class FlowNodeStatePublisher implements Publisher {
 
   @Override
   public void clearInstance(UUID instanceId) {
+    aggregator.clearInstance(instanceId);
+  }
+
+  public void evictInstance(
+      ProcessDefinitionKey key, UUID instanceId, List<TimedFlowNodeInstance> flowNodeInstances) {
+    aggregator.removeInstance(key, flowNodeInstances);
     aggregator.clearInstance(instanceId);
   }
 }

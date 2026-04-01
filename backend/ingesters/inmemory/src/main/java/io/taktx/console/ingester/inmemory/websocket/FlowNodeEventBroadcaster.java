@@ -10,6 +10,7 @@ package io.taktx.console.ingester.inmemory.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.runtime.Startup;
+import io.taktx.console.ingester.inmemory.EvictedProcessInstance;
 import io.taktx.console.ingester.inmemory.publishers.*;
 import io.taktx.dto.ExecutionState;
 import io.taktx.dto.ProcessDefinitionKey;
@@ -119,8 +120,13 @@ public class FlowNodeEventBroadcaster {
   /** Record a process instance state transition - fan out to relevant publishers. */
   public void recordInstanceStateChange(
       ProcessDefinitionKey key, ExecutionState oldState, ExecutionState newState) {
+    recordInstanceStateChange(null, key, oldState, newState);
+  }
+
+  public void recordInstanceStateChange(
+      UUID instanceId, ProcessDefinitionKey key, ExecutionState oldState, ExecutionState newState) {
     try {
-      instanceSummaryPublisher.recordInstanceStateChange(key, oldState, newState);
+      instanceSummaryPublisher.recordInstanceStateChange(instanceId, key, oldState, newState);
     } catch (Exception e) {
       log.error(
           "Error in instanceSummaryPublisher.recordInstanceStateChange: {}", e.getMessage(), e);
@@ -136,8 +142,18 @@ public class FlowNodeEventBroadcaster {
       ExecutionState currentState,
       boolean hadIncident,
       boolean hasIncident) {
+    recordIncidentChange(null, key, currentState, hadIncident, hasIncident);
+  }
+
+  public void recordIncidentChange(
+      UUID instanceId,
+      ProcessDefinitionKey key,
+      ExecutionState currentState,
+      boolean hadIncident,
+      boolean hasIncident) {
     try {
-      instanceSummaryPublisher.recordIncidentChange(key, currentState, hadIncident, hasIncident);
+      instanceSummaryPublisher.recordIncidentChange(
+          instanceId, key, currentState, hadIncident, hasIncident);
     } catch (Exception e) {
       log.error("Error in instanceSummaryPublisher.recordIncidentChange: {}", e.getMessage(), e);
     }
@@ -222,6 +238,28 @@ public class FlowNodeEventBroadcaster {
     } catch (Exception e) {
       log.error("Error clearing metrics for instance {}: {}", instanceId, e.getMessage(), e);
     }
+  }
+
+  public void handleEvictedInstances(List<EvictedProcessInstance> evictedInstances) {
+    if (evictedInstances == null || evictedInstances.isEmpty()) {
+      return;
+    }
+
+    for (EvictedProcessInstance evictedInstance : evictedInstances) {
+      UUID instanceId = evictedInstance.processInstanceId();
+      try {
+        instanceSummaryPublisher.evictInstance(instanceId);
+        flowNodeStatePublisher.evictInstance(
+            evictedInstance.definitionKey(), instanceId, evictedInstance.flowNodeInstances());
+        heatmapPublisher.clearInstance(instanceId);
+        instanceDeltaPublisher.clearInstance(instanceId);
+        activeInstanceSubscriptions.remove(instanceId);
+      } catch (Exception e) {
+        log.error("Error clearing retained state for evicted instance {}", instanceId, e);
+      }
+    }
+
+    log.info("Evicted {} process instance(s) from in-memory retention", evictedInstances.size());
   }
 
   /**

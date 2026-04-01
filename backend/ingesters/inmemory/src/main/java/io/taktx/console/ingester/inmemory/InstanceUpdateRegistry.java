@@ -12,8 +12,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.taktx.client.InstanceUpdateRecord;
-import io.taktx.console.ingester.inmemory.resources.OrderByType;
-import io.taktx.console.ingester.inmemory.resources.ProcessInstanceFilterCriteria;
 import io.taktx.console.ingester.inmemory.resources.TimedFlowNodeInstance;
 import io.taktx.console.ingester.inmemory.resources.TimedFlowNodeInstance.TimedFlowNodeUpdate;
 import io.taktx.console.ingester.inmemory.websocket.FlowNodeEventBroadcaster;
@@ -25,13 +23,8 @@ import io.taktx.dto.ProcessInstanceUpdateDTO;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,24 +32,10 @@ import lombok.extern.slf4j.Slf4j;
 @ApplicationScoped
 @RequiredArgsConstructor
 public class InstanceUpdateRegistry {
-
-  private final Map<UUID, ProcessDefinitionKey> processInstanceToDefinitionKey =
-      new ConcurrentHashMap<>();
-
-  private final Map<UUID, ProcessInstanceView> instanceViews = new ConcurrentHashMap<>();
-
-  // Changed from SortedSet to Map for deduplication - stores only latest state per flow node
-  // instance
-  // Key: ProcessInstanceId -> FlowNodeInstancePath -> Latest TimedFlowNodeInstance
-  private final Map<UUID, Map<String, TimedFlowNodeInstance>> flowNodeInstancesByProcessInstance =
-      new ConcurrentHashMap<>();
-
-  private final Map<UUID, ProcessInstanceUpdateDTO> processInstanceUpdates =
-      new ConcurrentHashMap<>();
-
   private final FlowNodeEventBroadcaster broadcaster;
   private final ObjectMapper objectMapper;
   private final ProcessDefinitionCache processDefinitionCache;
+  private final IngestionStore ingestionStore;
 
   public void handleInstanceUpdates(List<InstanceUpdateRecord> instanceUpdateRecords) {
     log.debug("Handling {} instance update records", instanceUpdateRecords.size());
@@ -73,12 +52,12 @@ public class InstanceUpdateRegistry {
       throws JsonProcessingException {
     if (instanceUpdateRecord.getUpdate()
         instanceof ProcessInstanceUpdateDTO processInstanceUpdateDTO) {
-      processInstanceToDefinitionKey.put(
+      ingestionStore.putProcessInstanceDefinitionKey(
           instanceUpdateRecord.getProcessInstanceId(),
           processInstanceUpdateDTO.getProcessDefinitionKey());
 
       // Store the full DTO for detailed view
-      processInstanceUpdates.put(
+      ingestionStore.putProcessInstanceUpdate(
           instanceUpdateRecord.getProcessInstanceId(), processInstanceUpdateDTO);
 
       log.debug(
@@ -90,43 +69,36 @@ public class InstanceUpdateRegistry {
       ProcessDefinitionKey key = processInstanceUpdateDTO.getProcessDefinitionKey();
 
       // Capture old state before update for state transition tracking
-      ProcessInstanceView existing = instanceViews.get(instanceUpdateRecord.getProcessInstanceId());
+      ProcessInstanceView existing =
+          ingestionStore.getProcessInstanceById(instanceUpdateRecord.getProcessInstanceId());
       ExecutionState oldState = existing != null ? existing.getState() : null;
       boolean hadIncident = existing != null && existing.getIncidentInfo() != null;
 
-      ProcessInstanceView updated =
-          instanceViews.compute(
-              instanceUpdateRecord.getProcessInstanceId(),
-              (id, view) -> {
-                if (view == null) {
-                  view =
-                      ProcessInstanceView.createNew(
-                          id,
-                          key,
-                          processInstanceUpdateDTO.getScope().getState(),
-                          processInstanceUpdateDTO.getProcessStartTime(),
-                          processInstanceUpdateDTO.getProcessEndTime());
-                  // Set parent process instance ID if available
-                  if (processInstanceUpdateDTO.getParentProcessInstanceId() != null) {
-                    view.setParentProcessInstanceId(
-                        processInstanceUpdateDTO.getParentProcessInstanceId());
-                  }
-                }
-                if (processInstanceUpdateDTO.getScope() != null
-                    && processInstanceUpdateDTO.getScope().getState() != null) {
-                  ExecutionState state = processInstanceUpdateDTO.getScope().getState();
-                  view.setState(state);
-                  // Store incident info if present
-                  if (processInstanceUpdateDTO.getIncidentInfoDTO() != null) {
-                    view.setIncidentInfo(processInstanceUpdateDTO.getIncidentInfoDTO());
-                  }
-                  if (processInstanceUpdateDTO.getProcessEndTime() != null) {
-                    view.setEndTime(
-                        Instant.ofEpochMilli(processInstanceUpdateDTO.getProcessEndTime()));
-                  }
-                }
-                return view;
-              });
+      ProcessInstanceView updated = existing;
+      if (updated == null) {
+        updated =
+            ProcessInstanceView.createNew(
+                instanceUpdateRecord.getProcessInstanceId(),
+                key,
+                processInstanceUpdateDTO.getScope().getState(),
+                processInstanceUpdateDTO.getProcessStartTime(),
+                processInstanceUpdateDTO.getProcessEndTime());
+        if (processInstanceUpdateDTO.getParentProcessInstanceId() != null) {
+          updated.setParentProcessInstanceId(processInstanceUpdateDTO.getParentProcessInstanceId());
+        }
+      }
+      if (processInstanceUpdateDTO.getScope() != null
+          && processInstanceUpdateDTO.getScope().getState() != null) {
+        ExecutionState state = processInstanceUpdateDTO.getScope().getState();
+        updated.setState(state);
+        if (processInstanceUpdateDTO.getIncidentInfoDTO() != null) {
+          updated.setIncidentInfo(processInstanceUpdateDTO.getIncidentInfoDTO());
+        }
+        if (processInstanceUpdateDTO.getProcessEndTime() != null) {
+          updated.setEndTime(Instant.ofEpochMilli(processInstanceUpdateDTO.getProcessEndTime()));
+        }
+      }
+      ingestionStore.saveProcessInstanceView(updated);
 
       // Record state changes
       if (updated != null) {
@@ -135,7 +107,8 @@ public class InstanceUpdateRegistry {
 
         // Record incident state change FIRST (if changed)
         if (hadIncident != hasIncident) {
-          broadcaster.recordIncidentChange(key, newState, hadIncident, hasIncident);
+          broadcaster.recordIncidentChange(
+              instanceUpdateRecord.getProcessInstanceId(), key, newState, hadIncident, hasIncident);
           log.debug(
               "Instance {} incident change: {} -> {} (state: {})",
               instanceUpdateRecord.getProcessInstanceId(),
@@ -150,7 +123,8 @@ public class InstanceUpdateRegistry {
         if (!java.util.Objects.equals(oldState, newState)) {
           if (!hasIncident) {
             // Normal case: no incident, record state transition
-            broadcaster.recordInstanceStateChange(key, oldState, newState);
+            broadcaster.recordInstanceStateChange(
+                instanceUpdateRecord.getProcessInstanceId(), key, oldState, newState);
             log.debug(
                 "Instance {} state transition: {} -> {}",
                 instanceUpdateRecord.getProcessInstanceId(),
@@ -190,7 +164,8 @@ public class InstanceUpdateRegistry {
 
       // Get process definition key to look up element metadata
       ProcessDefinitionKey processDefinitionKey =
-          processInstanceToDefinitionKey.get(instanceUpdateRecord.getProcessInstanceId());
+          ingestionStore.getProcessInstanceDefinitionKey(
+              instanceUpdateRecord.getProcessInstanceId());
 
       // Get flow node instance path for unique identification (used as map key)
       String flowNodeInstancePath =
@@ -209,12 +184,9 @@ public class InstanceUpdateRegistry {
         elementType = processDefinitionCache.getElementType(processDefinitionKey, elementId);
       }
 
-      // Retrieve existing instance to merge variables
-      Map<String, TimedFlowNodeInstance> instanceMap =
-          flowNodeInstancesByProcessInstance.computeIfAbsent(
-              instanceUpdateRecord.getProcessInstanceId(), k -> new ConcurrentHashMap<>());
-
-      TimedFlowNodeInstance existingInstance = instanceMap.get(flowNodeInstancePath);
+      TimedFlowNodeInstance existingInstance =
+          ingestionStore.getFlowNodeInstance(
+              instanceUpdateRecord.getProcessInstanceId(), flowNodeInstancePath);
 
       List<TimedFlowNodeUpdate> updateHistory = new ArrayList<>();
       if (existingInstance != null && existingInstance.updateHistory() != null) {
@@ -261,7 +233,8 @@ public class InstanceUpdateRegistry {
               mergedVariables.isEmpty() ? null : mergedVariables,
               List.copyOf(updateHistory));
 
-      instanceMap.put(flowNodeInstancePath, timedInstance);
+      ingestionStore.saveFlowNodeInstance(
+          instanceUpdateRecord.getProcessInstanceId(), flowNodeInstancePath, timedInstance);
 
       log.debug(
           "Stored flow node instance update for PI {} path {} elementName={} elementType={} {}",
@@ -287,244 +260,22 @@ public class InstanceUpdateRegistry {
       if (processDefinitionKey != null) {
         broadcaster.queueEvent(processDefinitionKey, event);
         // Also ensure we have a view entry even if PI update hasn't arrived yet
-        ProcessInstanceUpdateDTO processInstanceUpdate = new ProcessInstanceUpdateDTO();
-        instanceViews.computeIfAbsent(
-            instanceUpdateRecord.getProcessInstanceId(),
-            id ->
-                ProcessInstanceView.createNew(
-                    id,
-                    processDefinitionKey,
-                    ExecutionState.ACTIVE,
-                    flowNodeInstanceUpdateDTO.getProcessTime(),
-                    null));
+        ProcessInstanceView existingView =
+            ingestionStore.getProcessInstanceById(instanceUpdateRecord.getProcessInstanceId());
+        if (existingView == null) {
+          ingestionStore.saveProcessInstanceView(
+              ProcessInstanceView.createNew(
+                  instanceUpdateRecord.getProcessInstanceId(),
+                  processDefinitionKey,
+                  ExecutionState.ACTIVE,
+                  flowNodeInstanceUpdateDTO.getProcessTime(),
+                  null));
+        }
       } else {
         log.warn(
             "No process definition key found for instance {}, cannot broadcast event",
             instanceUpdateRecord.getProcessInstanceId());
       }
     }
-  }
-
-  /**
-   * Generic query method that supports flexible filtering. Handles current and future filter
-   * criteria in a single method.
-   */
-  public ProcessInstancePage queryProcessInstances(
-      ProcessInstanceFilterCriteria criteria,
-      int start,
-      int limit,
-      OrderByType orderBy,
-      OrderDirection orderDirection) {
-
-    // Start with all instances
-    List<ProcessInstanceView> filtered = new ArrayList<>(instanceViews.values());
-
-    // Apply filters if criteria is provided
-    if (criteria != null) {
-      filtered =
-          filtered.stream()
-              .filter(v -> matchesFilterCriteria(v, criteria))
-              .collect(Collectors.toCollection(ArrayList::new));
-    }
-
-    return sortAndPaginate(filtered, start, limit, orderBy, orderDirection);
-  }
-
-  /**
-   * Check if a process instance matches the filter criteria. Extensible design - add new filter
-   * types here.
-   */
-  private boolean matchesFilterCriteria(
-      ProcessInstanceView view, ProcessInstanceFilterCriteria criteria) {
-    // Filter by specific instance IDs - takes precedence over all other filters
-    if (criteria.getProcessInstanceIds() != null && !criteria.getProcessInstanceIds().isEmpty()) {
-      return criteria.getProcessInstanceIds().contains(view.getProcessInstanceId());
-    }
-
-    // Filter by process definition ID
-    if (criteria.getProcessDefinitionId() != null) {
-      if (!criteria.getProcessDefinitionId().equals(view.getProcessDefinitionId())) {
-        return false;
-      }
-    }
-
-    // Filter by version
-    if (criteria.getVersion() != null) {
-      if (criteria.getVersion() != view.getVersion()) {
-        return false;
-      }
-    }
-
-    // Filter by state(s) - supports both ExecutionState and INCIDENT pseudo-state
-    // IMPORTANT: Instances with incidents are ONLY counted as INCIDENT, not their ExecutionState
-    if (criteria.getStates() != null && !criteria.getStates().isEmpty()) {
-      ExecutionState viewState = view.getState();
-      boolean hasIncident = view.getIncidentInfo() != null;
-      boolean matchesAnyState = false;
-
-      for (var stateParam : criteria.getStates()) {
-        if (stateParam.isIncidentFilter()) {
-          // INCIDENT pseudo-state: match if instance has incident info
-          if (hasIncident) {
-            matchesAnyState = true;
-            break;
-          }
-        } else if (stateParam.isExecutionState()) {
-          // Regular ExecutionState: match by actual state
-          // BUT: if instance has incident, it should NOT match ExecutionState filters
-          if (!hasIncident && stateParam.getExecutionState().equals(viewState)) {
-            matchesAnyState = true;
-            break;
-          }
-        }
-      }
-
-      if (!matchesAnyState) {
-        return false;
-      }
-    }
-
-    // Filter by business key
-    if (criteria.getBusinessKey() != null) {
-      // Note: BusinessKey not yet stored in ProcessInstanceView
-      // This is a placeholder for future implementation
-      // if (!criteria.getBusinessKey().equals(view.getBusinessKey())) {
-      //   return false;
-      // }
-    }
-
-    // Filter by incident presence
-    if (criteria.getHasIncident() != null) {
-      // Note: Incident info not yet in ProcessInstanceView
-      // This is a placeholder for future implementation
-      // boolean hasIncident = view.getIncidentInfo() != null;
-      // if (criteria.getHasIncident() != hasIncident) {
-      //   return false;
-      // }
-    }
-
-    // Filter by start time range
-    // Note: Instances with null startTime are excluded from time range filters
-    if (criteria.getStartTimeFrom() != null || criteria.getStartTimeTo() != null) {
-      Instant startTime = view.getStartTime();
-
-      // Exclude instances with null startTime
-      if (startTime == null) {
-        return false;
-      }
-
-      // Check startTimeFrom (inclusive)
-      if (criteria.getStartTimeFrom() != null) {
-        if (startTime.isBefore(criteria.getStartTimeFrom())) {
-          return false;
-        }
-      }
-
-      // Check startTimeTo (exclusive)
-      if (criteria.getStartTimeTo() != null) {
-        if (!startTime.isBefore(criteria.getStartTimeTo())) {
-          return false;
-        }
-      }
-    }
-
-    // Filter by end time range
-    // Note: Instances with null endTime are excluded from end time range filters
-    if (criteria.getEndTimeFrom() != null || criteria.getEndTimeTo() != null) {
-      Instant endTime = view.getEndTime();
-
-      // Exclude instances with null endTime
-      if (endTime == null) {
-        return false;
-      }
-
-      // Check endTimeFrom (inclusive)
-      if (criteria.getEndTimeFrom() != null) {
-        if (endTime.isBefore(criteria.getEndTimeFrom())) {
-          return false;
-        }
-      }
-
-      // Check endTimeTo (exclusive)
-      if (criteria.getEndTimeTo() != null) {
-        if (!endTime.isBefore(criteria.getEndTimeTo())) {
-          return false;
-        }
-      }
-    }
-
-    // Future filters can be added here following the same pattern
-
-    return true;
-  }
-
-  /** Common sorting and pagination logic. */
-  private ProcessInstancePage sortAndPaginate(
-      List<ProcessInstanceView> instances,
-      int start,
-      int limit,
-      OrderByType orderBy,
-      OrderDirection orderDirection) {
-
-    int total = instances.size();
-
-    // Sort
-    Comparator<ProcessInstanceView> comparator;
-    switch (orderBy) {
-      case PROCESS_INSTANCE_COMPLETE:
-        comparator = Comparator.comparing(v -> safeInstant(v.getEndTime()));
-        break;
-      case PROCESS_INSTANCE_STATE:
-        comparator = Comparator.comparing(v -> v.getState() == null ? "" : v.getState().name());
-        break;
-      case PROCESS_INSTAMCE_START:
-      default:
-        comparator = Comparator.comparing(v -> safeInstant(v.getStartTime()));
-    }
-    if (orderDirection == OrderDirection.DESC) {
-      comparator = comparator.reversed();
-    }
-    instances.sort(comparator);
-
-    // Pagination safety
-    int from = Math.max(0, start);
-    int to = Math.min(instances.size(), from + Math.max(0, limit));
-    List<ProcessInstanceView> pageItems = List.of();
-    if (from < to) {
-      pageItems = instances.subList(from, to);
-    }
-    return new ProcessInstancePage(pageItems, total);
-  }
-
-  public ProcessInstanceView getProcessInstanceById(UUID processInstanceId) {
-    return instanceViews.get(processInstanceId);
-  }
-
-  public List<TimedFlowNodeInstance> getFlowNodeInstancesByProcessInstance(UUID processInstanceId) {
-    Map<String, TimedFlowNodeInstance> flowNodeMap =
-        flowNodeInstancesByProcessInstance.getOrDefault(processInstanceId, Collections.emptyMap());
-
-    // Return all flow node instances sorted by timestamp descending (newest first)
-    return flowNodeMap.values().stream()
-        .sorted(Comparator.comparing(TimedFlowNodeInstance::timestamp).reversed())
-        .collect(Collectors.toList());
-  }
-
-  public int getFlowNodeInstanceCountByProcessInstance(UUID processInstanceId) {
-    return flowNodeInstancesByProcessInstance
-        .getOrDefault(processInstanceId, Collections.emptyMap())
-        .size();
-  }
-
-  public Map<String, JsonNode> getProcessVariables(UUID processInstanceId) {
-    ProcessInstanceUpdateDTO pi = processInstanceUpdates.get(processInstanceId);
-    if (pi == null || pi.getVariables() == null) {
-      return Map.of();
-    }
-    return pi.getVariables().getVariables();
-  }
-
-  private Instant safeInstant(Instant t) {
-    return t == null ? Instant.EPOCH : t;
   }
 }

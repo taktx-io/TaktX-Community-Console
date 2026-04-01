@@ -8,11 +8,14 @@
 
 package io.taktx.console.ingester.inmemory.metrics;
 
+import io.taktx.console.ingester.inmemory.resources.TimedFlowNodeInstance;
+import io.taktx.console.ingester.inmemory.resources.TimedFlowNodeInstance.TimedFlowNodeUpdate;
 import io.taktx.console.ingester.inmemory.websocket.FlowNodeStateTracker;
 import io.taktx.dto.ExecutionState;
 import io.taktx.dto.ProcessDefinitionKey;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -180,5 +183,89 @@ public class FlowNodeStateAggregator {
     instanceStates.remove(instanceId);
     flowNodeInstancePreviousState.remove(instanceId);
     log.debug("Cleared flow node state tracking for instance {}", instanceId);
+  }
+
+  public void removeInstance(
+      ProcessDefinitionKey key, List<TimedFlowNodeInstance> flowNodeInstances) {
+    if (key == null || flowNodeInstances == null || flowNodeInstances.isEmpty()) {
+      return;
+    }
+
+    Map<String, FlowNodeStateTracker> definitionStateMap = definitionStates.get(key);
+    if (definitionStateMap == null || definitionStateMap.isEmpty()) {
+      return;
+    }
+
+    for (TimedFlowNodeInstance flowNodeInstance : flowNodeInstances) {
+      String flowNodeId = resolveFlowNodeId(flowNodeInstance);
+      if (flowNodeId == null) {
+        continue;
+      }
+
+      FlowNodeStateTracker definitionTracker = definitionStateMap.get(flowNodeId);
+      if (definitionTracker == null) {
+        continue;
+      }
+
+      definitionTracker.subtractSnapshot(calculateContribution(flowNodeInstance));
+      if (!definitionTracker.getSnapshot().hasActivity()) {
+        definitionStateMap.remove(flowNodeId);
+      }
+    }
+
+    if (definitionStateMap.isEmpty()) {
+      definitionStates.remove(key);
+    }
+  }
+
+  private String resolveFlowNodeId(TimedFlowNodeInstance flowNodeInstance) {
+    if (flowNodeInstance.elementId() != null) {
+      return flowNodeInstance.elementId();
+    }
+    if (flowNodeInstance.flowNodeInstanceUpdate() == null
+        || flowNodeInstance.flowNodeInstanceUpdate().getFlowNodeInstance() == null) {
+      return null;
+    }
+    return flowNodeInstance.flowNodeInstanceUpdate().getFlowNodeInstance().getElementId();
+  }
+
+  private FlowNodeStateTracker.StateSnapshot calculateContribution(
+      TimedFlowNodeInstance flowNodeInstance) {
+    FlowNodeStateTracker tracker = new FlowNodeStateTracker();
+    ExecutionState previousState = null;
+
+    List<TimedFlowNodeUpdate> updateHistory = flowNodeInstance.updateHistory();
+    if (updateHistory != null && !updateHistory.isEmpty()) {
+      for (TimedFlowNodeUpdate timedUpdate : updateHistory) {
+        if (timedUpdate.flowNodeInstanceUpdate() == null
+            || timedUpdate.flowNodeInstanceUpdate().getFlowNodeInstance() == null) {
+          continue;
+        }
+        previousState =
+            applyIfChanged(
+                tracker,
+                previousState,
+                timedUpdate.flowNodeInstanceUpdate().getFlowNodeInstance().getState());
+      }
+      return tracker.getSnapshot();
+    }
+
+    if (flowNodeInstance.flowNodeInstanceUpdate() != null
+        && flowNodeInstance.flowNodeInstanceUpdate().getFlowNodeInstance() != null) {
+      applyIfChanged(
+          tracker,
+          null,
+          flowNodeInstance.flowNodeInstanceUpdate().getFlowNodeInstance().getState());
+    }
+    return tracker.getSnapshot();
+  }
+
+  private ExecutionState applyIfChanged(
+      FlowNodeStateTracker tracker, ExecutionState previousState, ExecutionState newState) {
+    if (newState == null || newState.equals(previousState)) {
+      return previousState;
+    }
+    updateTracker(tracker, newState);
+    return newState;
   }
 }

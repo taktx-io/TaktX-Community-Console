@@ -13,6 +13,7 @@ import io.taktx.dto.ProcessDefinitionKey;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,8 @@ public class ProcessInstanceStateAggregator {
   private final Map<ProcessDefinitionKey, AtomicInteger> perVersionIncidentCounts =
       new ConcurrentHashMap<>();
 
+  private final Map<UUID, InstanceAggregateState> perInstanceStates = new ConcurrentHashMap<>();
+
   /**
    * Record a state transition for a process instance. Atomically decrements old state and
    * increments new state.
@@ -44,6 +47,14 @@ public class ProcessInstanceStateAggregator {
    */
   public void recordStateTransition(
       ProcessDefinitionKey key, ExecutionState oldState, ExecutionState newState) {
+    recordStateTransition(null, key, oldState, newState);
+  }
+
+  public void recordStateTransition(
+      UUID processInstanceId,
+      ProcessDefinitionKey key,
+      ExecutionState oldState,
+      ExecutionState newState) {
 
     if (newState == null) {
       log.warn("Attempted to record null newState for {}", key);
@@ -64,6 +75,14 @@ public class ProcessInstanceStateAggregator {
 
     // Increment new state
     stateCounts.computeIfAbsent(newState, s -> new AtomicInteger(0)).incrementAndGet();
+
+    if (processInstanceId != null) {
+      perInstanceStates.compute(
+          processInstanceId,
+          (ignored, existingState) ->
+              new InstanceAggregateState(
+                  key, newState, existingState != null && existingState.hasIncident()));
+    }
 
     if (log.isDebugEnabled()) {
       log.debug(
@@ -86,6 +105,15 @@ public class ProcessInstanceStateAggregator {
    * @param hasIncident Whether the instance now has an incident
    */
   public void recordIncidentChange(
+      ProcessDefinitionKey key,
+      ExecutionState currentState,
+      boolean hadIncident,
+      boolean hasIncident) {
+    recordIncidentChange(null, key, currentState, hadIncident, hasIncident);
+  }
+
+  public void recordIncidentChange(
+      UUID processInstanceId,
       ProcessDefinitionKey key,
       ExecutionState currentState,
       boolean hadIncident,
@@ -137,6 +165,44 @@ public class ProcessInstanceStateAggregator {
             currentState);
       }
     }
+
+    if (processInstanceId != null) {
+      perInstanceStates.compute(
+          processInstanceId,
+          (ignored, existingState) ->
+              new InstanceAggregateState(
+                  key,
+                  currentState,
+                  hasIncident || (existingState != null && existingState.hasIncident())));
+      if (!hasIncident) {
+        perInstanceStates.computeIfPresent(
+            processInstanceId,
+            (ignored, existingState) ->
+                new InstanceAggregateState(existingState.key(), existingState.state(), false));
+      }
+    }
+  }
+
+  public void removeInstance(UUID processInstanceId) {
+    InstanceAggregateState removedState = perInstanceStates.remove(processInstanceId);
+    if (removedState == null) {
+      return;
+    }
+
+    if (removedState.hasIncident()) {
+      decrementCounter(perVersionIncidentCounts.get(removedState.key()));
+      return;
+    }
+
+    if (removedState.state() == null) {
+      return;
+    }
+
+    Map<ExecutionState, AtomicInteger> stateCounts = perVersionCounts.get(removedState.key());
+    if (stateCounts == null) {
+      return;
+    }
+    decrementCounter(stateCounts.get(removedState.state()));
   }
 
   /**
@@ -364,4 +430,13 @@ public class ProcessInstanceStateAggregator {
 
     return incidentCounts;
   }
+
+  private void decrementCounter(AtomicInteger counter) {
+    if (counter != null) {
+      counter.updateAndGet(current -> Math.max(0, current - 1));
+    }
+  }
+
+  private record InstanceAggregateState(
+      ProcessDefinitionKey key, ExecutionState state, boolean hasIncident) {}
 }

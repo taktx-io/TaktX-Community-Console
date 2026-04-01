@@ -7,9 +7,14 @@ package io.taktx.console.ingester.inmemory.metrics;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.taktx.console.ingester.inmemory.resources.TimedFlowNodeInstance;
+import io.taktx.console.ingester.inmemory.resources.TimedFlowNodeInstance.TimedFlowNodeUpdate;
 import io.taktx.console.ingester.inmemory.websocket.FlowNodeStateTracker;
 import io.taktx.dto.ExecutionState;
+import io.taktx.dto.FlowNodeInstanceDTO;
+import io.taktx.dto.FlowNodeInstanceUpdateDTO;
 import io.taktx.dto.ProcessDefinitionKey;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -211,5 +216,36 @@ class FlowNodeStateAggregatorTest {
 
     // Then: Returns empty map
     assertTrue(snapshot.isEmpty());
+  }
+
+  @Test
+  void shouldRemoveEvictedInstanceContributionFromDefinitionState() {
+    aggregator.recordEvent(orderV1, instance1, "Task1", "Task1_1", ExecutionState.ACTIVE);
+    aggregator.recordEvent(orderV1, instance1, "Task1", "Task1_1", ExecutionState.COMPLETED);
+
+    TimedFlowNodeInstance retainedFlowNode =
+        new TimedFlowNodeInstance(
+            200L,
+            flowNodeUpdate("Task1", ExecutionState.COMPLETED),
+            "Task1",
+            "Task 1",
+            "Task",
+            null,
+            List.of(
+                new TimedFlowNodeUpdate(100L, flowNodeUpdate("Task1", ExecutionState.ACTIVE)),
+                new TimedFlowNodeUpdate(200L, flowNodeUpdate("Task1", ExecutionState.COMPLETED))));
+
+    aggregator.removeInstance(orderV1, List.of(retainedFlowNode));
+
+    Map<String, FlowNodeStateTracker.StateSnapshot> snapshot =
+        aggregator.getDefinitionSnapshot(orderV1);
+    assertFalse(snapshot.containsKey("Task1"));
+  }
+
+  private FlowNodeInstanceUpdateDTO flowNodeUpdate(String elementId, ExecutionState state) {
+    FlowNodeInstanceDTO flowNodeInstance = new FlowNodeInstanceDTO() {};
+    flowNodeInstance.setElementId(elementId);
+    flowNodeInstance.setState(state);
+    return new FlowNodeInstanceUpdateDTO(null, flowNodeInstance, null, 0L, null, null);
   }
 }

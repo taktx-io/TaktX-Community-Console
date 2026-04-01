@@ -10,7 +10,6 @@ package io.taktx.console.ingester.inmemory;
 
 import io.quarkus.runtime.Startup;
 import io.quarkus.runtime.StartupEvent;
-import io.taktx.client.TaktXClient;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -23,14 +22,13 @@ public class Ingester {
 
   private static final Logger log = Logger.getLogger(Ingester.class);
 
-  @Inject TaktXClient taktXClient;
   @Inject InstanceUpdateRegistry registry;
   @Inject IngesterConfigHolder configHolder;
+  @Inject InstanceUpdateConsumerManager consumerManager;
 
   void onStart(@Observes @Priority(2000) StartupEvent ev) {
     try {
-      taktXClient.registerInstanceUpdateConsumer(
-          "ingester-inmemory",
+      consumerManager.start(
           instanceUpdateRecords -> registry.handleInstanceUpdates(instanceUpdateRecords));
     } catch (Exception e) {
       log.error("Failed to register instance update consumer", e);

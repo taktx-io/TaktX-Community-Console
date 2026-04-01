@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
+import io.taktx.console.ingester.inmemory.IngestionStore;
 import io.taktx.console.ingester.inmemory.metrics.FlowNodeAnimationAggregator;
 import io.taktx.console.ingester.inmemory.metrics.FlowNodeHeatmapAggregator;
 import io.taktx.console.ingester.inmemory.metrics.FlowNodeStateAggregator;
@@ -38,6 +39,8 @@ class ComponentWiringIntegrationTest {
 
   @Inject SubscriptionRegistry subscriptionRegistry;
 
+  @Inject IngestionStore ingestionStore;
+
   @Inject ProcessInstanceStateAggregator instanceStateAggregator;
 
   @Inject FlowNodeStateAggregator flowNodeStateAggregator;
@@ -62,6 +65,11 @@ class ComponentWiringIntegrationTest {
   @Test
   void shouldInjectSubscriptionRegistry() {
     assertNotNull(subscriptionRegistry, "SubscriptionRegistry should be injected");
+  }
+
+  @Test
+  void shouldInjectIngestionStore() {
+    assertNotNull(ingestionStore, "IngestionStore should be injected");
   }
 
   @Test

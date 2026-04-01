@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import io.taktx.dto.ExecutionState;
 import io.taktx.dto.ProcessDefinitionKey;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -163,5 +164,19 @@ class ProcessInstanceStateAggregatorTest {
 
     // Then: Returns empty map
     assertTrue(snapshot.isEmpty());
+  }
+
+  @Test
+  void shouldRemoveEvictedInstanceFromAggregateCounts() {
+    UUID processInstanceId = UUID.randomUUID();
+
+    aggregator.recordStateTransition(processInstanceId, orderV1, null, ExecutionState.ACTIVE);
+    aggregator.recordStateTransition(
+        processInstanceId, orderV1, ExecutionState.ACTIVE, ExecutionState.COMPLETED);
+
+    aggregator.removeInstance(processInstanceId);
+
+    Map<ExecutionState, Integer> snapshot = aggregator.getVersionSnapshot(orderV1);
+    assertEquals(0, snapshot.getOrDefault(ExecutionState.COMPLETED, 0));
   }
 }

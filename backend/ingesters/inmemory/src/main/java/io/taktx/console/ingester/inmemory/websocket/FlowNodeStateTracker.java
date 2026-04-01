@@ -51,6 +51,13 @@ public class FlowNodeStateTracker {
     return new StateSnapshot(active.get(), completed.get(), aborted.get());
   }
 
+  /** Remove a previously retained contribution snapshot from this tracker. */
+  public void subtractSnapshot(StateSnapshot snapshot) {
+    active.updateAndGet(current -> Math.max(0, current - snapshot.active()));
+    completed.updateAndGet(current -> Math.max(0, current - snapshot.completed()));
+    aborted.updateAndGet(current -> Math.max(0, current - snapshot.aborted()));
+  }
+
   /** Immutable snapshot of current state */
   public record StateSnapshot(int active, int completed, int aborted) {
     public boolean hasActivity() {

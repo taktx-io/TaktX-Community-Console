@@ -20,6 +20,7 @@ import jakarta.websocket.Session;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -43,6 +44,11 @@ public class ProcessInstanceSummaryPublisher implements Publisher {
     aggregator.recordStateTransition(key, oldState, newState);
   }
 
+  public void recordInstanceStateChange(
+      UUID instanceId, ProcessDefinitionKey key, ExecutionState oldState, ExecutionState newState) {
+    aggregator.recordStateTransition(instanceId, key, oldState, newState);
+  }
+
   /**
    * Record an incident state change for a process instance.
    *
@@ -57,6 +63,19 @@ public class ProcessInstanceSummaryPublisher implements Publisher {
       boolean hadIncident,
       boolean hasIncident) {
     aggregator.recordIncidentChange(key, currentState, hadIncident, hasIncident);
+  }
+
+  public void recordIncidentChange(
+      UUID instanceId,
+      ProcessDefinitionKey key,
+      ExecutionState currentState,
+      boolean hadIncident,
+      boolean hasIncident) {
+    aggregator.recordIncidentChange(instanceId, key, currentState, hadIncident, hasIncident);
+  }
+
+  public void evictInstance(UUID instanceId) {
+    aggregator.removeInstance(instanceId);
   }
 
   @Override

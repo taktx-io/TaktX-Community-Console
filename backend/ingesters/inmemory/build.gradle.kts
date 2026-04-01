@@ -15,6 +15,7 @@ dependencies {
     implementation(libs.quarkus.hibernate.validator)
     implementation(libs.quarkus.smallrye.health)
     implementation(libs.quarkus.resteasy.client)
+    implementation("org.apache.kafka:kafka-clients")
 
     // JWT for authorization token validation
     implementation(libs.jjwt.api)
