@@ -102,7 +102,7 @@ export function useDetailPaneResize({
           // Save the default so it persists
           try {
             localStorage.setItem(DETAIL_WIDTH_KEY, String(defaultWidth));
-          } catch (e) {
+          } catch {
             // Silently fail
           }
         }
@@ -164,7 +164,7 @@ export function useDetailPaneResize({
           setDetailWidthPx(maxWidth);
           try {
             localStorage.setItem(DETAIL_WIDTH_KEY, String(maxWidth));
-          } catch (e) {
+          } catch {
             // Silently fail
           }
         }
@@ -197,14 +197,14 @@ export function useDetailPaneResize({
       (body.style as any).userSelect = 'none';
       (body.style as any).webkitUserSelect = 'none';
       (body.style as any).MozUserSelect = 'none';
-    } catch (e) {
+    } catch {
       // Silently fail
     }
 
     const preventSelect = (ev: Event) => {
       try {
         ev.preventDefault();
-      } catch (e) {
+      } catch {
         // Silently fail
       }
     };
@@ -248,7 +248,7 @@ export function useDetailPaneResize({
           if (detailWidthPx) {
             localStorage.setItem(DETAIL_WIDTH_KEY, String(detailWidthPx));
           }
-        } catch (e) {
+        } catch {
           // Silently fail
         }
       }
@@ -265,7 +265,7 @@ export function useDetailPaneResize({
         else (body.style as any).webkitUserSelect = '';
         if (typeof prevMoz !== 'undefined') (body.style as any).MozUserSelect = prevMoz;
         else (body.style as any).MozUserSelect = '';
-      } catch (e) {
+      } catch {
         // Silently fail
       }
 
@@ -276,7 +276,7 @@ export function useDetailPaneResize({
           document.removeEventListener('selectstart', prevent);
           document.removeEventListener('dragstart', prevent);
         }
-      } catch (e) {
+      } catch {
         // Silently fail
       }
 
@@ -319,7 +319,7 @@ export function useDetailPaneResize({
       // Persist to localStorage
       try {
         localStorage.setItem(DETAIL_WIDTH_KEY, String(next));
-      } catch (e) {
+      } catch {
         // Silently fail
       }
     }

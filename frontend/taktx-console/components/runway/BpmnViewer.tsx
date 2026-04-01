@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import BpmnViewer from 'bpmn-js/lib/NavigatedViewer';
 import { Empty, Spin } from 'antd';
 import BpmnHeatmapOverlay from './BpmnHeatmapOverlay';
@@ -71,7 +71,6 @@ export default function BpmnViewerComponent({
   clickableLinks = [],
   onLinkClick,
   onElementClick,
-  selectedElementId,
   onViewerReady,
 }: Readonly<BpmnViewerComponentProps>) {
    const containerRef = useRef<HTMLDivElement>(null);
@@ -80,6 +79,8 @@ export default function BpmnViewerComponent({
    const initialFitRef = useRef<boolean>(false);
    // track readiness in state so render updates when viewer becomes available
    const [viewerReady, setViewerReady] = useState(false);
+   const onViewerReadyRef = useRef(onViewerReady);
+   onViewerReadyRef.current = onViewerReady;
 
    // Badge data source - use single instance if processInstanceId provided, otherwise aggregate
    // Memoize badgeColors to prevent infinite re-renders
@@ -90,7 +91,7 @@ export default function BpmnViewerComponent({
        outgoingColor: overlaySettings.outgoingColor,
        abortedColor: overlaySettings.abortedColor,
      };
-   }, [overlaySettings?.incomingColor, overlaySettings?.outgoingColor, overlaySettings?.abortedColor]);
+   }, [overlaySettings]);
 
    const aggregateDataSource = useAggregateFlowNodeCountDataSource(
      selectedDefinitionId,
@@ -153,8 +154,8 @@ export default function BpmnViewerComponent({
            setViewerReady(true);
 
            // Notify parent that viewer is ready
-           if (onViewerReady && viewerRef.current) {
-             onViewerReady(viewerRef.current);
+            if (onViewerReadyRef.current && viewerRef.current) {
+              onViewerReadyRef.current(viewerRef.current);
            }
 
             // Ensure viewer is still valid (not destroyed during async operation)
@@ -249,7 +250,7 @@ export default function BpmnViewerComponent({
             } catch {}
           }, 20);
         }
-       } catch (e) {
+       } catch {
          // noop
        }
      });

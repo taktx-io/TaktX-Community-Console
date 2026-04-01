@@ -93,7 +93,7 @@ export type ProcessDefinitionsWithVersionsSummary = Omit<ProcessDefinitionsWithV
 let globalTriggerCounter = 0;
 
 // Internal aggregator hook (kept name small)
-function useBpmnHeatmapAggregator(batchMs = 100) {
+function useBpmnHeatmapAggregator() {
   const [triggers, setTriggers] = useState<AggregatedTrigger[]>([]);
   const triggersRef = useRef<Map<string, AggregatedTrigger>>(new Map());
   const cleanupIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -195,7 +195,7 @@ export function useBpmnHeatmap(
       const proto = globalThis.window.location.protocol === 'https:' ? 'wss' : 'ws';
       const host = globalThis.window.location.host || `${globalThis.window.location.hostname}:${globalThis.window.location.port}`;
       return `${proto}://${host}/ws/process-events`;
-    } catch (e) {
+    } catch {
       return 'ws://localhost:8084/ws/process-events';
     }
   };
@@ -205,7 +205,7 @@ export function useBpmnHeatmap(
   const effectiveFactory = wsUrlFactory ?? (() => Promise.resolve(fallbackWsUrl));
   const effectiveIdentity = wsIdentity;
 
-  const { push, triggers } = useBpmnHeatmapAggregator(100);
+  const { push, triggers } = useBpmnHeatmapAggregator();
   const [processInstanceHeatmap, setProcessInstanceHeatmap] = useState<ProcessInstanceHeatmap | null>(null);
   const [aggregateState, setAggregateState] = useState<ProcessDefinitionAggregateState | null>(null);
   const [instanceState, setInstanceState] = useState<ProcessInstanceState | null>(null);
@@ -278,7 +278,7 @@ export function useBpmnHeatmap(
             sequenceFlowIds: hm.sequenceFlowIds ?? null,
             timestamp: hm.timestamp || Date.now(),
           });
-        } catch (e) {
+        } catch {
           // ignore parse errors
         }
       }
@@ -293,7 +293,7 @@ export function useBpmnHeatmap(
             flowNodeStates: stateMsg.flowNodeStates || {},
             timestamp: stateMsg.timestamp || Date.now(),
           });
-        } catch (e) {
+        } catch {
           // ignore parse errors
         }
       }
@@ -307,7 +307,7 @@ export function useBpmnHeatmap(
             flowNodeStates: stateMsg.flowNodeStates || {},
             timestamp: stateMsg.timestamp || Date.now(),
           });
-        } catch (e) {
+        } catch {
           // ignore parse errors
         }
       }
@@ -320,11 +320,11 @@ export function useBpmnHeatmap(
             definitions: summaryMsg.definitions || {},
             timestamp: summaryMsg.timestamp || Date.now(),
           });
-        } catch (e) {
+        } catch {
           // ignore parse errors
         }
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   });
@@ -409,7 +409,7 @@ export function useBpmnHeatmap(
         // the socket opens the 'status' change handler will pick up that we need to subscribe because currentSubRef
         // won't match the desired values.
       }
-    } catch (e) {}
+    } catch {}
   }, [status, send, selectedDefinitionId, selectedVersion, selectedInstanceId]);
 
   // Ensure we unsubscribe on unmount or when WSUrl changes

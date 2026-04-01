@@ -38,7 +38,6 @@ export default function FlowNodeDetailPopup({
   const popupRef = useRef<HTMLDivElement>(null);
   const [showJsonModal, setShowJsonModal] = useState(false);
   const [elementPosition, setElementPosition] = useState<{ x: number; y: number } | null>(null);
-  const lineOverlayRef = useRef<HTMLDivElement | null>(null);
 
   // Filter instances for this element (memoized to prevent infinite loop)
   const instances = useMemo(() =>
@@ -309,8 +308,6 @@ export default function FlowNodeDetailPopup({
 
         // Find edge point on popup (end of line)
         let endX, endY;
-        const popupHalfW = popupRect.width / 2;
-        const popupHalfH = popupRect.height / 2;
 
         // Determine which edge of the popup to connect to based on angle
         const angle = Math.atan2(dy, dx);

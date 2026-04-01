@@ -60,14 +60,12 @@ export default function BpmnBadgeLayer({
   dataSource,
   enabled,
   config,
-  colors,
   aggregateBadgeSettings,
   instanceBadgeSettings,
   processInstanceId,
 }: Readonly<BpmnBadgeLayerProps>) {
   const badgeLayerRef = useRef<SVGGElement | null>(null);
   const badgeElementsRef = useRef<Map<string, SVGGElement>>(new Map());
-  const badgeContentRef = useRef<Map<string, string>>(new Map());
   const viewportWarningShownRef = useRef<boolean>(false);
   const [badges, setBadges] = useState<ElementBadge[]>([]);
 
@@ -194,7 +192,7 @@ export default function BpmnBadgeLayer({
   }, [dataSource, enabled]);
 
   // Ensure badge layer exists
-  const ensureBadgeLayer = () => {
+  const ensureBadgeLayer = useCallback(() => {
     if (!viewer) return null;
     const canvas = viewer.get?.('canvas');
     const container = canvas?.getContainer?.();
@@ -284,14 +282,14 @@ export default function BpmnBadgeLayer({
 
     badgeLayerRef.current = layer;
     return layer;
-  };
+  }, [BADGE_LAYER_ID, viewer]);
 
   // Fade out all badges (used on cleanup)
-  const clearAllBadges = () => {
+  const clearAllBadges = useCallback(() => {
     badgeElementsRef.current.forEach(badge => {
       badge.style.opacity = '0';
     });
-  };
+  }, []);
 
   // Get badge position offset based on corner
   const getBadgeOffset = (position: BadgePosition, elementBounds: any): { x: number; y: number } => {
@@ -353,7 +351,7 @@ export default function BpmnBadgeLayer({
   };
 
   // Create or update a badge for an element
-  const createBadge = (badge: ElementBadge, shouldBeVisible: boolean = true) => {
+  const createBadge = useCallback((badge: ElementBadge, shouldBeVisible: boolean = true) => {
     if (!viewer) return;
 
     const registry = viewer.get?.('elementRegistry');
@@ -569,7 +567,7 @@ export default function BpmnBadgeLayer({
         badgeGroup.style.opacity = '1';
       });
     }
-  };
+  }, [ensureBadgeLayer, viewer]);
 
   // Update badges when data changes - just update opacity and text
   useEffect(() => {
@@ -632,7 +630,7 @@ export default function BpmnBadgeLayer({
         createBadge(badge, isVisible);
       }
     });
-  }, [badges, enabled, viewer, shouldShowBadge]);
+  }, [badges, enabled, viewer, shouldShowBadge, createBadge]);
 
   // Initialize and cleanup
   useEffect(() => {
@@ -642,14 +640,14 @@ export default function BpmnBadgeLayer({
     return () => {
       clearAllBadges();
     };
-  }, [viewer]);
+  }, [viewer, ensureBadgeLayer, clearAllBadges]);
 
   // Clear on disable
   useEffect(() => {
     if (!enabled) {
       clearAllBadges();
     }
-  }, [enabled]);
+  }, [enabled, clearAllBadges]);
 
   // Listen for subprocess navigation (root.set) and force badge recreation
   useEffect(() => {
@@ -687,7 +685,7 @@ export default function BpmnBadgeLayer({
     return () => {
       eventBus.off('root.set', handleRootChange);
     };
-  }, [viewer, enabled, dataSource]);
+  }, [viewer, enabled, dataSource, ensureBadgeLayer]);
 
   // Periodic check to ensure badge layer stays properly attached
   useEffect(() => {
@@ -730,7 +728,7 @@ export default function BpmnBadgeLayer({
     return () => {
       clearInterval(interval);
     };
-  }, [viewer, enabled]);
+  }, [viewer, enabled, ensureBadgeLayer]);
 
   return null;
 }

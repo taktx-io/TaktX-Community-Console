@@ -17,9 +17,6 @@ interface StatusBadgeProps {
  */
 export default function StatusBadge({
   status,
-  url,
-  onForceFallback,
-  onTest
 }: Readonly<StatusBadgeProps>) {
   let statusColor = '#d9d9d9';
   let statusLabel = 'Offline';

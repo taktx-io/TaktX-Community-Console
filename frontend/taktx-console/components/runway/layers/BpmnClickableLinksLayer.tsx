@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 export interface ClickableLink {
   elementId: string;
@@ -38,7 +38,7 @@ export default function BpmnClickableLinksLayer({
   const clickHandlersRef = useRef<Map<string, (e: MouseEvent) => void>>(new Map());
 
   // Ensure link layer exists
-  const ensureLinkLayer = () => {
+  const ensureLinkLayer = useCallback(() => {
     if (!viewer) return null;
 
     const canvas = viewer.get?.('canvas');
@@ -62,10 +62,22 @@ export default function BpmnClickableLinksLayer({
     }
 
     return layer;
-  };
+  }, [viewer]);
+
+  const clearAllLinks = useCallback(() => {
+    linkElementsRef.current.forEach((overlay, elementId) => {
+      const handler = clickHandlersRef.current.get(elementId);
+      if (handler) {
+        overlay.removeEventListener('click', handler);
+        clickHandlersRef.current.delete(elementId);
+      }
+      overlay.remove();
+    });
+    linkElementsRef.current.clear();
+  }, []);
 
   // Create clickable overlay for an element
-  const createClickableOverlay = (link: ClickableLink) => {
+  const createClickableOverlay = useCallback((link: ClickableLink) => {
     if (!viewer || !onLinkClick) return;
 
     const elementRegistry = viewer.get?.('elementRegistry');
@@ -146,7 +158,7 @@ export default function BpmnClickableLinksLayer({
 
     layer.appendChild(overlay);
     linkElementsRef.current.set(link.elementId, overlay);
-  };
+  }, [ensureLinkLayer, onLinkClick, viewer]);
 
   // Create link icon (arrow or chain link)
   const createLinkIcon = (x: number, y: number): SVGGElement => {
@@ -200,27 +212,14 @@ export default function BpmnClickableLinksLayer({
     links.forEach(link => {
       createClickableOverlay(link);
     });
-  }, [links, enabled, viewer, onLinkClick]);
-
-  // Clear all links
-  const clearAllLinks = () => {
-    linkElementsRef.current.forEach((overlay, elementId) => {
-      const handler = clickHandlersRef.current.get(elementId);
-      if (handler) {
-        overlay.removeEventListener('click', handler);
-        clickHandlersRef.current.delete(elementId);
-      }
-      overlay.remove();
-    });
-    linkElementsRef.current.clear();
-  };
+  }, [links, enabled, viewer, createClickableOverlay, clearAllLinks]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       clearAllLinks();
     };
-  }, []);
+  }, [clearAllLinks]);
 
   return null;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Input, Tabs, Space, Alert, Button, App, Tooltip, Modal } from 'antd';
 import { CopyOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
 import { loadBatches, deleteBatch, saveBatch, batchExists, type BatchInfo } from '@/lib/utils/batchStorage';
@@ -48,13 +48,13 @@ export default function InstanceSelectionFilter({
 
   // Use controlled mode if provided, otherwise use internal mode
   const mode = instanceSelectionMode !== undefined ? instanceSelectionMode : internalMode;
-  const setMode = (newMode: 'manual' | 'bookmarks') => {
+  const setMode = useCallback((newMode: 'manual' | 'bookmarks') => {
     if (onInstanceSelectionModeChange) {
       onInstanceSelectionModeChange(newMode);
     } else {
       setInternalMode(newMode);
     }
-  };
+  }, [onInstanceSelectionModeChange]);
   const [manualInput, setManualInput] = useState('');
   const [bookmarkSearch, setBookmarkSearch] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
@@ -70,8 +70,8 @@ export default function InstanceSelectionFilter({
   // This allows parent to populate the textarea (e.g., when starting instances without bookmark)
   useEffect(() => {
     // Create a stable string representation to compare
-    const currentStr = manualInstanceIds.sort().join(',');
-    const prevStr = prevManualInstanceIdsRef.current.sort().join(',');
+    const currentStr = [...manualInstanceIds].sort().join(',');
+    const prevStr = [...prevManualInstanceIdsRef.current].sort().join(',');
 
     // Only update if manualInstanceIds changed from parent
     if (currentStr !== prevStr) {
@@ -83,17 +83,21 @@ export default function InstanceSelectionFilter({
         setMode('manual');
       }
     }
-  }, [manualInstanceIds]);
+  }, [manualInstanceIds, setMode]);
 
   // Auto-switch to bookmarks mode when a bookmark is selected
   useEffect(() => {
     if (selectedBookmark) {
       setMode('bookmarks');
     }
-  }, [selectedBookmark]);
+  }, [selectedBookmark, setMode]);
 
   // Load bookmarks from localStorage
-  const bookmarks = useMemo(() => loadBatches(), [deletionTrigger, bookmarkRefreshTrigger]); // Re-load when deletion happens or refresh triggered
+  const bookmarkReloadKey = `${deletionTrigger}:${bookmarkRefreshTrigger}`;
+  const bookmarks = useMemo(() => {
+    void bookmarkReloadKey;
+    return loadBatches();
+  }, [bookmarkReloadKey]); // Re-load when deletion happens or refresh triggered
 
   // Filter bookmarks by search
   const filteredBookmarks = useMemo(() => {

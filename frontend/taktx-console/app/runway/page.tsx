@@ -48,10 +48,11 @@ import type {ClickableLink} from '@/components/runway/layers/BpmnClickableLinksL
 import {loadOverlaySettings} from '@/lib/utils/overlaySettingsLoader';
 import JobsPanel from '@/components/runway/JobsPanel';
 import {getActiveJobCount} from '@/lib/utils/jobStorage';
-import {saveBatch} from '@/lib/utils/batchStorage';
+import {loadBatches, saveBatch} from '@/lib/utils/batchStorage';
 import {useRunwayUrlSync} from '@/lib/hooks/useRunwayUrlSync';
 import {useDetailPaneResize} from '@/lib/hooks/useDetailPaneResize';
 import {useIncidentModal} from '@/lib/hooks/useIncidentModal';
+import {generateFlowNodeInstanceKey, getFirstInstanceForElement} from '@/lib/utils/flowNodeInstanceUtils';
 
 function RunwayPageContent() {
   const {message} = App.useApp();
@@ -74,7 +75,7 @@ function RunwayPageContent() {
   const [selectedInstance, setSelectedInstance] = useState<ProcessInstanceRow | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [flowNodeInstances, setFlowNodeInstances] = useState<TimedFlowNodeInstance[]>([]);
-  const viewerRef = useRef<any>(null);
+  const viewerRef = useRef<unknown>(null);
 
   // ============================================================================
   // CLEAN DUAL-SELECTION ARCHITECTURE
@@ -153,23 +154,16 @@ function RunwayPageContent() {
 
   // Clear state and close detail pane when page initializes
   useEffect(() => {
-    // Close any open detail pane
-    if (selectedInstanceId) {
-      setSelectedInstanceId(null);
-      setSelectedInstance(null);
-      setIsClosing(false);
-      setSelectedIncident(null);
-    }
-
-    // Clear selections
+    setSelectedInstanceId(null);
+    setSelectedInstance(null);
+    setIsClosing(false);
+    setSelectedIncident(null);
     setSelectedElementId(null);
     setSelectedFlowNodeInstanceKey(null);
     setFlowNodeInstances([]);
-
-    // Reset viewed BPMN
     setViewedBpmnDefinition(null);
     setViewedBpmnVersion(null);
-  }, []);
+  }, [setSelectedIncident]);
 
   // Filter panel collapsed state
   const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
@@ -216,9 +210,6 @@ function RunwayPageContent() {
    * Sets element ID and auto-selects first matching instance
    */
   const handleDiagramElementClick = useCallback((elementId: string) => {
-    const {generateFlowNodeInstanceKey, getFirstInstanceForElement} = require('@/lib/utils/flowNodeInstanceUtils');
-
-    // Find first instance for this element
     const firstInstance = getFirstInstanceForElement(elementId, flowNodeInstances);
 
     if (firstInstance) {
@@ -339,7 +330,6 @@ function RunwayPageContent() {
   // Start Process Modal state
   const [showStartModal, setShowStartModal] = useState(false);
   const [startModalPrefill, setStartModalPrefill] = useState<{ definitionId?: string; version?: number }>({});
-  const [activeBatchName, setActiveBatchName] = useState<string | null>(null);
   const [batchInstanceIds, setBatchInstanceIds] = useState<string[]>([]);
   const [tableRefreshToken, setTableRefreshToken] = useState(0);
 
@@ -357,9 +347,8 @@ function RunwayPageContent() {
       } else if (instanceSelectionMode === 'bookmarks') {
         // Bookmarks mode - only use selected bookmark IDs
         if (selectedBookmark) {
-          const {loadBatches} = require('@/lib/utils/batchStorage');
           const bookmarks = loadBatches();
-          const bookmark = bookmarks.find((b: any) => b.name === selectedBookmark);
+          const bookmark = bookmarks.find((b) => b.name === selectedBookmark);
           if (bookmark) {
             bookmark.instanceIds.forEach((id: string) => instanceIds.add(id));
           }
@@ -449,7 +438,7 @@ function RunwayPageContent() {
         setSelectedBookmark(bookmarkState.selectedBookmark);
       }
     }
-  }, [filterMode]); // Don't include manualInstanceIds/selectedBookmark in deps to avoid loops
+  }, [filterMode, manualInstanceIds.length, selectedBookmark]);
 
   // Save definition filter state when values change
   useEffect(() => {
@@ -496,26 +485,20 @@ function RunwayPageContent() {
       setSelectedBookmark(null);
       setBatchInstanceIds([]);
     }
-  }, [selectedDefinitionId]); // Only depend on selectedDefinitionId to avoid circular updates
+  }, [selectedDefinitionId, filterMode]);
 
   // Close detail pane when bookmark changes
   useEffect(() => {
-    if (selectedInstanceId) {
-      setSelectedInstanceId(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSelectedInstanceId(null);
   }, [selectedBookmark]);
 
   // Close detail pane when manual instance IDs change
   useEffect(() => {
-    if (selectedInstanceId) {
-      setSelectedInstanceId(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSelectedInstanceId(null);
   }, [manualInstanceIds]);
 
   // Debug trigger state
-  const [debugTrigger, setDebugTrigger] = useState<{
+  const [debugTrigger] = useState<{
     requestId: number;
     elementId?: string;
     eventType?: string
@@ -530,7 +513,6 @@ function RunwayPageContent() {
     aggregateState,
     instanceState,
     wsStatus,
-    lastMessage,
     forceFallback,
     processInstanceHeatmap,
     globalSummary
@@ -659,7 +641,7 @@ function RunwayPageContent() {
 
     // TODO: Implement call activity element detection when backend provides this information
     return [];
-  }, [selectedInstance]);
+  }, []);
 
 
   // Handle instance row click - toggle selection and ensure correct BPMN diagram is loaded
@@ -759,7 +741,7 @@ function RunwayPageContent() {
     setTableRefreshToken(t => t + 1);
 
     message.info(`Loading instance: ${instanceId.substring(0, 8)}...`);
-  }, [selectedInstanceId, message]);
+  }, [selectedInstanceId, message, setSelectedIncident]);
 
 
   // Handle opening start modal
@@ -784,7 +766,7 @@ function RunwayPageContent() {
   };
 
   // Handle successful instance start
-  const handleStartSuccess = (instanceIds: string[], bookmarkName: string | null, processDefinitionId: string, version: number | null) => {
+  const handleStartSuccess = (instanceIds: string[], bookmarkName: string | null) => {
     if (bookmarkName) {
       // Save bookmark to localStorage
       try {
@@ -820,8 +802,6 @@ function RunwayPageContent() {
       setBatchInstanceIds([]);
     }
 
-    setActiveBatchName(bookmarkName);
-
     // Clear definition filters when showing instances
     setSelectedDefinitionId(null);
     setSelectedVersion(null);
@@ -846,7 +826,7 @@ function RunwayPageContent() {
   handleInstanceClickRef.current = handleInstanceClick;
 
   // Handle when rows are loaded in the table
-  const handleRowsLoaded = useCallback((rows: any[]) => {
+  const handleRowsLoaded = useCallback((rows: ProcessInstanceRow[]) => {
     // Check if we should auto-select the first instance
     if (autoSelectFirstInstanceRef.current && rows.length > 0) {
       autoSelectFirstInstanceRef.current = false; // Reset flag
@@ -858,7 +838,6 @@ function RunwayPageContent() {
         version: firstRow.version,
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load process definition IDs on mount
@@ -904,15 +883,65 @@ function RunwayPageContent() {
   }, [selectedDefinitionId, selectedVersion, selectedInstanceId]);
 
   // Load BPMN XML when viewed BPMN changes OR when versions are loaded
+  const loadBpmnXml = useCallback(async (definitionId: string, version: number) => {
+    if (!versions.some(v => v.version === version) || versionsOwner !== definitionId) {
+      console.warn('[RunwayPage] requested BPMN XML for version not in versions list; skipping', {
+        definitionId,
+        version,
+        versions: versions.map(v => v.version)
+      });
+      setBpmnXml(null);
+      return;
+    }
+    if (viewedBpmnDefinition !== definitionId) {
+      console.warn('[RunwayPage] requested BPMN XML for a stale definitionId; skipping', {
+        requested: definitionId,
+        current: viewedBpmnDefinition
+      });
+      return;
+    }
+    const token = ++bpmnRequestTokenRef.current;
+    try {
+      setLoading(true);
+      setError(null);
+      const xml = await getProcessDefinitionXml(
+          definitionId,
+          version
+      );
+      if (bpmnRequestTokenRef.current !== token) {
+        console.warn('[RunwayPage] ignoring stale BPMN XML response', {definitionId, version});
+        return;
+      }
+      if (!versions.some(v => v.version === version) || versionsOwner !== definitionId || viewedBpmnDefinition !== definitionId) {
+        console.warn('[RunwayPage] BPMN XML response stale or version missing after fetch; ignoring', {
+          definitionId,
+          version,
+          versions: versions.map(v => v.version)
+        });
+        return;
+      }
+      setBpmnXml(xml);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('status 404')) {
+        console.warn('[RunwayPage] BPMN XML not found (404)', {definitionId, version});
+        setBpmnXml(null);
+      } else {
+        setError('Failed to load BPMN diagram');
+        console.error('Error loading BPMN XML:', err);
+        setBpmnXml(null);
+      }
+    } finally {
+      if (bpmnRequestTokenRef.current === token) setLoading(false);
+    }
+  }, [versions, versionsOwner, viewedBpmnDefinition]);
+
   useEffect(() => {
     if (viewedBpmnDefinition && viewedBpmnVersion !== null) {
-      // Load BPMN for the viewed diagram (could be from filters OR instance)
-      // This will be called when viewed BPMN changes AND when versions load
       loadBpmnXml(viewedBpmnDefinition, viewedBpmnVersion);
     } else {
       setBpmnXml(null);
     }
-  }, [viewedBpmnDefinition, viewedBpmnVersion, versions, versionsOwner]);
+  }, [viewedBpmnDefinition, viewedBpmnVersion, versions, versionsOwner, loadBpmnXml]);
 
   // Apply pending version after versions are loaded (from instance selection)
   useEffect(() => {
@@ -964,7 +993,7 @@ function RunwayPageContent() {
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [selectedDefinitionId, selectedVersion]);
+  }, [selectedDefinitionId, selectedVersion, selectedInstanceId, setSelectedIncident]);
 
 
   const loadProcessDefinitionIds = async () => {
@@ -996,68 +1025,6 @@ function RunwayPageContent() {
     }
   };
 
-  const loadBpmnXml = async (definitionId: string, version: number) => {
-    // Defensive guards: ensure the version exists for the currently-loaded versions
-    // and that the requested definition matches the current viewed BPMN. This prevents
-    // attempting to fetch XML for a version that doesn't belong to the currently-viewed
-    // definition (causes 404s seen in console).
-    if (!versions.some(v => v.version === version) || versionsOwner !== definitionId) {
-      console.warn('[RunwayPage] requested BPMN XML for version not in versions list; skipping', {
-        definitionId,
-        version,
-        versions: versions.map(v => v.version)
-      });
-      setBpmnXml(null);
-      return;
-    }
-    // Check against viewedBpmnDefinition instead of selectedDefinitionId
-    // because viewed BPMN can be set by instance selection (without filters) OR by filters
-    if (viewedBpmnDefinition !== definitionId) {
-      console.warn('[RunwayPage] requested BPMN XML for a stale definitionId; skipping', {
-        requested: definitionId,
-        current: viewedBpmnDefinition
-      });
-      return;
-    }
-    // create a local token so we can ignore late responses
-    const token = ++bpmnRequestTokenRef.current;
-    try {
-      setLoading(true);
-      setError(null);
-      const xml = await getProcessDefinitionXml(
-          definitionId,
-          version
-      );
-      // If another request started after this one, ignore the result
-      if (bpmnRequestTokenRef.current !== token) {
-        console.warn('[RunwayPage] ignoring stale BPMN XML response', {definitionId, version});
-        return;
-      }
-      // double-check the version still exists before applying
-      if (!versions.some(v => v.version === version) || versionsOwner !== definitionId || viewedBpmnDefinition !== definitionId) {
-        console.warn('[RunwayPage] BPMN XML response stale or version missing after fetch; ignoring', {
-          definitionId,
-          version,
-          versions: versions.map(v => v.version)
-        });
-        return;
-      }
-      setBpmnXml(xml);
-    } catch (err: any) {
-      // Treat 404 specially: log as debug and don't show a blocking error
-      if (err && err.message && err.message.includes('status 404')) {
-        console.warn('[RunwayPage] BPMN XML not found (404)', {definitionId, version});
-        setBpmnXml(null);
-      } else {
-        setError('Failed to load BPMN diagram');
-        console.error('Error loading BPMN XML:', err);
-        setBpmnXml(null);
-      }
-    } finally {
-      // only clear loading if this is the latest request
-      if (bpmnRequestTokenRef.current === token) setLoading(false);
-    }
-  };
 
   return (
       <div ref={containerRef} style={{height: '100%', display: 'flex', flexDirection: 'column'}}>
@@ -1379,7 +1346,7 @@ function RunwayPageContent() {
                                 onRowsLoaded={handleRowsLoaded}
                                 onNavigateToInstance={navigateToInstance}
                                 onBookmarkSaved={() => setBookmarkRefreshTrigger(prev => prev + 1)}
-                                onJobCreated={(jobId) => {
+                                onJobCreated={() => {
                                   setJobsPanelCollapsed(false);
                                   setActiveJobsCount(getActiveJobCount());
                                 }}
@@ -1462,7 +1429,7 @@ function RunwayPageContent() {
                                 </div>
                             )}
                           </Card>
-                      ) as any}
+                      ) as React.ReactNode}
                   />
                 </div>
 

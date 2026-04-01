@@ -9,7 +9,6 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   LoadingOutlined,
-  StopOutlined,
   LeftOutlined,
   RightOutlined,
 } from '@ant-design/icons';
@@ -180,7 +179,6 @@ export default function JobsPanel({ collapsed, onCollapsedChange, onJobUpdate }:
     if (job.type !== 'cancel-by-filter' || !job.data) return null;
 
     const data = job.data as CancelByFilterJobData;
-    const total = data.processedCount;
 
     return (
       <div style={{ marginTop: 12, fontSize: 12 }}>

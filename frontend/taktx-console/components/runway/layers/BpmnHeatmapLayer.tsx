@@ -643,6 +643,8 @@ export default function BpmnHeatmapLayer({
   // EXACT COPY of all useEffect hooks from original
 
   // Process triggers
+  // This effect intentionally relies on the current imperative viewer helpers to avoid
+  // tearing down and recreating glow state during normal render churn.
   useEffect(() => {
     if (!enabled || !triggers.length) return;
 
@@ -664,7 +666,7 @@ export default function BpmnHeatmapLayer({
       }
 
       let elementId: string | undefined;
-      let eventType = trigger.eventType || 'ACTIVE';
+      const eventType = trigger.eventType || 'ACTIVE';
       const intensity = trigger.intensity || 1;
 
       if (trigger.elementId) {
@@ -691,9 +693,10 @@ export default function BpmnHeatmapLayer({
 
       triggerGlow(elementId, baseColor, settings.heatColor, eventType, intensity);
     });
-  }, [triggers, enabled, settings]);
+  }, [triggers, enabled, settings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle debug trigger
+  // The debug path should only react to explicit trigger/settings changes.
   useEffect(() => {
     if (!debugTrigger || !enabled) return;
 
@@ -722,18 +725,17 @@ export default function BpmnHeatmapLayer({
         }
       }
     }
-  }, [debugTrigger?.requestId, enabled, settings]);
+  }, [debugTrigger?.requestId, enabled, settings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update filters when settings change
+  // This imperatively patches viewer-managed SVG filters, so we scope the dependencies
+  // to the settings that actually affect filter output.
   useEffect(() => {
     updateFilters();
-  }, [
-    settings.glowIntensity,
-    settings.innerGlowIntensity,
-    viewer,
-  ]);
+  }, [settings.glowIntensity, settings.innerGlowIntensity, viewer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize
+  // Rebuilding the layer only when the viewer identity changes avoids unnecessary churn.
   useEffect(() => {
     if (!viewer) return;
     ensureGlowLayer();
@@ -742,9 +744,10 @@ export default function BpmnHeatmapLayer({
     return () => {
       clearAllGlows();
     };
-  }, [viewer]);
+  }, [viewer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Start/stop decay interval
+  // The decay loop intentionally follows enablement and decay-related settings only.
   useEffect(() => {
     if (!enabled) return;
 
@@ -760,7 +763,7 @@ export default function BpmnHeatmapLayer({
         decayIntervalRef.current = null;
       }
     };
-  }, [enabled, settings.fadeInTime, settings.maxStackLevel, settings.outerGlowOpacity, settings.innerGlowOpacity, settings.incomingColor, settings.outgoingColor, settings.abortedColor, settings.heatColor]);
+  }, [enabled, settings.fadeInTime, settings.maxStackLevel, settings.outerGlowOpacity, settings.innerGlowOpacity, settings.incomingColor, settings.outgoingColor, settings.abortedColor, settings.heatColor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear on disable
   useEffect(() => {

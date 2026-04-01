@@ -18,7 +18,9 @@ export async function authFetch(
   url: string,
   options: AuthFetchOptions = {}
 ): Promise<Response> {
-  const { requireAuth: _requireAuth = true, autoRedirect: _autoRedirect = false, ...fetchOptions } = options;
+  const { requireAuth = true, autoRedirect = false, ...fetchOptions } = options;
+  void requireAuth;
+  void autoRedirect;
   return fetch(url, fetchOptions);
 }
 

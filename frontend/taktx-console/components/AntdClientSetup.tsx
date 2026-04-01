@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { unstableSetRender } from 'antd/es/config-provider/UnstableContext';
 import { createRoot } from 'react-dom/client';
 
@@ -10,7 +10,7 @@ import { createRoot } from 'react-dom/client';
 export default function AntdClientSetup() {
   useEffect(() => {
     try {
-      unstableSetRender((node: any, container: Element | DocumentFragment) => {
+      unstableSetRender((node: ReactNode, container: Element | DocumentFragment) => {
         // Ensure we have an Element to mount into (React 18 createRoot requires an Element)
         const mountEl = (container instanceof Element) ? container : (container as DocumentFragment).firstElementChild as Element | null;
         if (!mountEl) {
@@ -26,7 +26,7 @@ export default function AntdClientSetup() {
           try { root.unmount(); } catch {}
         };
       });
-    } catch (err) {
+    } catch {
       // ignore - this is just best-effort to silence the antd warning on React 19+
     }
   }, []);

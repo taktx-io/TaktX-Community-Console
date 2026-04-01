@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Layout, Menu } from 'antd';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { DashboardOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import React from 'react';
@@ -63,10 +64,12 @@ export default function ShellLayout({ children }: Readonly<ShellLayoutProps>) {
           height: '64px',
           transition: 'all 0.2s'
         }}>
-          <img
+          <Image
             key={collapsed ? 'square' : 'wide'}
             src={collapsed ? "/taktx-logo-square-transparent.png" : "/taktx-logo-transparent.png"}
             alt="TaktX Logo"
+            width={collapsed ? 48 : 160}
+            height={collapsed ? 48 : 40}
             style={{
               width: collapsed ? '48px' : 'auto',
               height: collapsed ? '48px' : '40px',

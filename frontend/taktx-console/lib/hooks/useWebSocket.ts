@@ -224,7 +224,7 @@ export function useWebSocket<T = any>(
         sharedMap.delete(identity);
       }
     };
-  }, [identity]); // identity is the stable key — urlFactory is captured inside SharedWebSocket
+  }, [identity, urlFactory]);
 
   const send = useCallback((msg: unknown) => {
     sharedRef.current?.send(msg);

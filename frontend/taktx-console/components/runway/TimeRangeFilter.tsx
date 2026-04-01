@@ -520,7 +520,7 @@ export default function TimeRangeFilter({
         setEndConfig({ mode: 'now' });
       }
     }
-  }, [startTime, endTime]);
+  }, [startTime, endTime, startConfig, endConfig]);
 
   const handleQuickRangeSelect = (range: QuickRange) => {
     setStartConfig(range.startConfig);

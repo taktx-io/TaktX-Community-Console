@@ -9,6 +9,7 @@ import HorizontalSplit from '@/components/layout/HorizontalSplit';
 import { getFlowNodeInstances, getProcessVariables, TimedFlowNodeInstance } from '@/lib/api/processInstanceApi';
 import type { OverlaySettingsState } from './OverlaySettings';
 import { getStateColor } from '@/lib/utils/stateColors';
+import { findInstanceByKey } from '@/lib/utils/flowNodeInstanceUtils';
 import {
   buildSelectedFlowNodeActivityRows,
 } from '@/lib/utils/processInstanceTrust';
@@ -63,7 +64,6 @@ interface VariableRowBrowse {
 export default function ProcessInstanceDetail({
   instanceId,
   onClose,
-  incidentInfo: _incidentInfo,
   overlaySettings,
   parentProcessInstanceId,
   onNavigateToInstance,
@@ -88,7 +88,6 @@ export default function ProcessInstanceDetail({
 
   // Compute selected instance from key (no local state!)
   const selectedFlowNodeInstance = useMemo(() => {
-    const { findInstanceByKey } = require('@/lib/utils/flowNodeInstanceUtils');
     return findInstanceByKey(selectedFlowNodeInstanceKey || null, flowNodeInstances);
   }, [selectedFlowNodeInstanceKey, flowNodeInstances]);
 
@@ -115,7 +114,7 @@ export default function ProcessInstanceDetail({
   useEffect(() => {
     if (!instanceId) return;
     loadFlowNodesPage();
-  }, [instanceId, refreshToken]); // removed loadFlowNodesPage from deps to avoid double-fire
+  }, [instanceId, refreshToken, loadFlowNodesPage]);
 
   useEffect(() => {
     if (!selectedFlowNodeInstance && activeInspectorTab === 'activity') {

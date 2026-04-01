@@ -66,7 +66,6 @@ const PAGE_SIZE = 50;
 const ProcessInstanceRow = React.memo(({
   row,
   isSelected,
-  isRowSelected,
   isCheckboxChecked,
   onRowClick,
   onCheckboxChange,
@@ -82,7 +81,6 @@ const ProcessInstanceRow = React.memo(({
 }: {
   row: ProcessInstanceRowType;
   isSelected: boolean;
-  isRowSelected: boolean;
   isCheckboxChecked: boolean;
   onRowClick: (row: ProcessInstanceRowType) => void;
   onCheckboxChange: (id: string) => void;
@@ -367,7 +365,7 @@ export default function ProcessInstanceTable({
   // stale-closure issues and without needing to re-subscribe the WS listener
   // every time the job ID changes.
   const activeCancelJobIdRef = useRef<string | null>(null);
-  const [activeCancelJobId, setActiveCancelJobId] = useState<string | null>(null);
+  const [, setActiveCancelJobId] = useState<string | null>(null);
 
   // Keep ref in sync with state (synchronous — ref is always current on the next tick)
   const setActiveCancelJob = useCallback((id: string | null) => {
@@ -438,7 +436,6 @@ export default function ProcessInstanceTable({
         }
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // stable — intentionally empty; all mutable values accessed via refs
 
   // WebSocket connection to the ingester for real-time instance state updates
@@ -448,7 +445,7 @@ export default function ProcessInstanceTable({
   });
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [bodyHeight, setBodyHeight] = useState<number | undefined>(undefined);
+  const bodyHeight: number | undefined = undefined;
 
   // map UI sort -> backend orderBy key
   const orderByKey = useMemo(() => {
@@ -576,30 +573,6 @@ export default function ProcessInstanceTable({
     setShowSaveBookmarkModal(true);
   }, [selectedInstanceIds.size, message]);
 
-  const handleConfirmSaveBookmark = useCallback(() => {
-    const name = newBookmarkName.trim();
-
-    if (!name) {
-      message.error('Bookmark name is required');
-      return;
-    }
-
-    const instanceIdsArray = Array.from(selectedInstanceIds);
-
-    // Check if bookmark exists
-    if (batchExists(name)) {
-      modal.confirm({
-        title: 'Bookmark already exists',
-        content: `A bookmark named "${name}" already exists. Do you want to overwrite it?`,
-        onOk: () => {
-          performSave(name, instanceIdsArray);
-        },
-      });
-    } else {
-      performSave(name, instanceIdsArray);
-    }
-  }, [newBookmarkName, selectedInstanceIds, message, modal]);
-
   const performSave = useCallback((name: string, instanceIds: string[]) => {
     try {
       saveBatch({
@@ -622,6 +595,29 @@ export default function ProcessInstanceTable({
       message.error(`Failed to save bookmark: ${error}`);
     }
   }, [message, handleClearSelection, onBookmarkSaved]);
+
+  const handleConfirmSaveBookmark = useCallback(() => {
+    const name = newBookmarkName.trim();
+
+    if (!name) {
+      message.error('Bookmark name is required');
+      return;
+    }
+
+    const instanceIdsArray = Array.from(selectedInstanceIds);
+
+    if (batchExists(name)) {
+      modal.confirm({
+        title: 'Bookmark already exists',
+        content: `A bookmark named "${name}" already exists. Do you want to overwrite it?`,
+        onOk: () => {
+          performSave(name, instanceIdsArray);
+        },
+      });
+    } else {
+      performSave(name, instanceIdsArray);
+    }
+  }, [newBookmarkName, selectedInstanceIds, message, modal, performSave]);
 
   // Manual refresh
   const handleRefresh = useCallback(() => {
@@ -1307,7 +1303,6 @@ export default function ProcessInstanceTable({
                 key={row.processInstanceId}
                 row={row}
                 isSelected={row.processInstanceId === selectedInstanceId}
-                isRowSelected={row.processInstanceId === selectedInstanceId}
                 isCheckboxChecked={selectedInstanceIds.has(row.processInstanceId)}
                 onRowClick={handleRowClick}
                 onCheckboxChange={handleToggleSelection}

@@ -192,33 +192,6 @@ export default function StartProcessModal({
     return errors;
   }, [variables]);
 
-  // Build map of variable types for smart replacement
-  const variableTypes = useMemo(() => {
-    const types = new Map<string, string>();
-
-    // Built-in tokens are strings
-    types.set('index', 'number');
-    types.set('index1', 'number');
-    types.set('timestamp', 'string');
-    types.set('uuid', 'string');
-
-    // User-defined variables - detect type from first element
-    variables.forEach((v, index) => {
-      const key = v.key.trim();
-      if (!key || variableValidation.some(e => e.index === index)) return;
-
-      try {
-        const parsed = JSON.parse(v.value);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          types.set(key, getValueType(parsed[0]));
-        }
-      } catch {
-        // Ignore invalid JSON
-      }
-    });
-
-    return types;
-  }, [variables, variableValidation]);
 
   // Build map of available variables (user-defined + built-in)
   const availableVariables = useMemo(() => {

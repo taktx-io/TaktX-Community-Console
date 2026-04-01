@@ -33,13 +33,11 @@ export default function HorizontalSplit({
   collapsedWidthPx = 48,
 }: Readonly<HorizontalSplitProps>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [mounted, setMounted] = useState(false);
   const [leftRatio, setLeftRatio] = useState<number>(initialLeftRatio);
   const [dragging, setDragging] = useState(false);
 
   // On mount, restore saved ratio
   useEffect(() => {
-    setMounted(true);
     try {
       const saved = window.localStorage.getItem(storageKey);
       if (saved) {

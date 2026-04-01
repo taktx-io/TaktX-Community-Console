@@ -1,7 +1,13 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { ProcessInstanceState, ProcessInstanceHeatmap } from '@/lib/hooks/useBpmnHeatmap';
+
+interface FlowNodePathCounts {
+  completed: number;
+  active: number;
+  aborted: number;
+}
 
 interface ProcessInstancePathHighlightProps {
   viewer: any;
@@ -21,6 +27,53 @@ export default function ProcessInstancePathHighlight({
   enabled = true,
 }: Readonly<ProcessInstancePathHighlightProps>) {
   const highlightedElementsRef = useRef<Set<string>>(new Set());
+
+  const clearHighlights = useCallback(() => {
+    if (!viewer) return;
+
+    const canvas = viewer.get?.('canvas');
+    const elementRegistry = viewer.get?.('elementRegistry');
+    if (!canvas || !elementRegistry) return;
+
+    highlightedElementsRef.current.forEach(elementId => {
+      const element = elementRegistry.get(elementId);
+      if (!element) return;
+
+      const gfx = canvas.getGraphics(element);
+      if (!gfx) return;
+
+      const visualGroup = gfx.querySelector('.djs-visual');
+      if (!visualGroup) return;
+
+      const isConnection = element.waypoints !== undefined;
+
+      if (isConnection) {
+        const paths = visualGroup.querySelectorAll('path');
+        paths.forEach((path: SVGPathElement) => {
+          if (path.hasAttribute('data-original-stroke')) {
+            const originalStroke = path.getAttribute('data-original-stroke');
+
+            path.setAttribute('stroke', originalStroke || 'black');
+            path.style.stroke = originalStroke || 'black';
+
+            path.removeAttribute('data-original-stroke');
+          }
+        });
+      } else {
+        const shape = visualGroup.querySelector('rect.djs-outline, path, rect, circle, polygon, polyline');
+        if (shape && shape.hasAttribute('data-original-stroke')) {
+          const originalStroke = shape.getAttribute('data-original-stroke');
+
+          shape.setAttribute('stroke', originalStroke || 'black');
+          shape.style.stroke = originalStroke || 'black';
+
+          shape.removeAttribute('data-original-stroke');
+        }
+      }
+    });
+
+    highlightedElementsRef.current.clear();
+  }, [viewer]);
 
   // Apply or remove highlighting
   useEffect(() => {
@@ -79,9 +132,10 @@ export default function ProcessInstancePathHighlight({
 
     // Also collect from instanceState (elements that have counts > 0)
     if (instanceState && instanceState.flowNodeStates) {
-      Object.entries(instanceState.flowNodeStates).forEach(([elementId, counts]: any) => {
+      Object.entries(instanceState.flowNodeStates).forEach(([elementId, counts]) => {
+        const typedCounts = counts as FlowNodePathCounts;
         // If element has any activity (completed or active), it's part of the path
-        if (counts.completed > 0 || counts.active > 0 || counts.aborted > 0) {
+        if (typedCounts.completed > 0 || typedCounts.active > 0 || typedCounts.aborted > 0) {
           elementsToHighlight.add(elementId);
         }
       });
@@ -141,64 +195,14 @@ export default function ProcessInstancePathHighlight({
       }
     });
 
-  }, [viewer, processInstanceHeatmap, instanceState, processInstanceId, highlightColor, enabled]);
-
-  // Clear highlights function
-  const clearHighlights = () => {
-    if (!viewer) return;
-
-    const canvas = viewer.get?.('canvas');
-    const elementRegistry = viewer.get?.('elementRegistry');
-    if (!canvas || !elementRegistry) return;
-
-    highlightedElementsRef.current.forEach(elementId => {
-      const element = elementRegistry.get(elementId);
-      if (!element) return;
-
-      const gfx = canvas.getGraphics(element);
-      if (!gfx) return;
-
-      const visualGroup = gfx.querySelector('.djs-visual');
-      if (!visualGroup) return;
-
-      const isConnection = element.waypoints !== undefined;
-
-      if (isConnection) {
-        // For sequence flows, restore stroke color only
-        const paths = visualGroup.querySelectorAll('path');
-        paths.forEach((path: SVGPathElement) => {
-          if (path.hasAttribute('data-original-stroke')) {
-            const originalStroke = path.getAttribute('data-original-stroke');
-
-            path.setAttribute('stroke', originalStroke || 'black');
-            path.style.stroke = originalStroke || 'black';
-
-            path.removeAttribute('data-original-stroke');
-          }
-        });
-      } else {
-        // For shapes, restore stroke color only
-        const shape = visualGroup.querySelector('rect.djs-outline, path, rect, circle, polygon, polyline');
-        if (shape && shape.hasAttribute('data-original-stroke')) {
-          const originalStroke = shape.getAttribute('data-original-stroke');
-
-          shape.setAttribute('stroke', originalStroke || 'black');
-          shape.style.stroke = originalStroke || 'black';
-
-          shape.removeAttribute('data-original-stroke');
-        }
-      }
-    });
-
-    highlightedElementsRef.current.clear();
-  };
+  }, [clearHighlights, viewer, processInstanceHeatmap, instanceState, processInstanceId, highlightColor, enabled]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       clearHighlights();
     };
-  }, []);
+  }, [clearHighlights]);
 
   return null; // This component doesn't render anything
 }

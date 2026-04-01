@@ -356,6 +356,7 @@ export default function ZeebeTemplateIconLayer({
   };
 
   // Initialize layer when viewer becomes ready
+  // This imperative SVG layer should only be rebuilt when the viewer instance changes.
   useEffect(() => {
     if (!viewer) return;
 
@@ -366,9 +367,11 @@ export default function ZeebeTemplateIconLayer({
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [viewer]);
+  }, [viewer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Render icons when viewer is ready or enabled state changes
+  // The icon rendering/event wiring is intentionally scoped to viewer readiness and the
+  // public inputs that affect icon output.
   useEffect(() => {
     if (!viewerReady) return;
 
@@ -401,7 +404,7 @@ export default function ZeebeTemplateIconLayer({
         };
       }
     }
-  }, [viewerReady, enabled, viewer, iconSize]);
+  }, [viewerReady, enabled, viewer, iconSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup on unmount
   useEffect(() => {
@@ -411,7 +414,7 @@ export default function ZeebeTemplateIconLayer({
         iconLayerRef.current.remove();
       }
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return null; // This component doesn't render React elements
 }
