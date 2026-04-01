@@ -172,18 +172,22 @@ export function useWebSocket<T = any>(
   const [status, setStatus] = useState<WebSocketState<T>['status']>('closed');
   const [lastMessage, setLastMessage] = useState<T & { _timestamp?: number } | undefined>(undefined);
   const sharedRef = useRef<SharedWebSocket | null>(null);
+  const urlFactoryRef = useRef<UrlFactory | null>(urlFactory);
   // ref to the latest onMessage handler (optional)
   const onMessageRef = useRef<((msg: T) => void) | undefined>(undefined);
+
+  // keep the latest URL factory without forcing shared-socket teardown/recreate on every render
+  urlFactoryRef.current = urlFactory;
 
   // keep the latest handler without re-subscribing
   onMessageRef.current = onMessage ?? undefined;
 
   useEffect(() => {
-    if (!urlFactory || !identity) return;
+    if (!urlFactoryRef.current || !identity) return;
 
     let shared = sharedMap.get(identity);
     if (!shared) {
-      shared = new SharedWebSocket(urlFactory);
+      shared = new SharedWebSocket(() => urlFactoryRef.current?.() ?? Promise.resolve(null));
       sharedMap.set(identity, shared);
     }
     sharedRef.current = shared;
@@ -224,7 +228,7 @@ export function useWebSocket<T = any>(
         sharedMap.delete(identity);
       }
     };
-  }, [identity, urlFactory]);
+  }, [identity]);
 
   const send = useCallback((msg: unknown) => {
     sharedRef.current?.send(msg);

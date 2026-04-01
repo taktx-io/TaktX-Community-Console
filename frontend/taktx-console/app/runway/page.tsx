@@ -54,6 +54,10 @@ import {useDetailPaneResize} from '@/lib/hooks/useDetailPaneResize';
 import {useIncidentModal} from '@/lib/hooks/useIncidentModal';
 import {generateFlowNodeInstanceKey, getFirstInstanceForElement} from '@/lib/utils/flowNodeInstanceUtils';
 
+type BpmnViewerHandle = {
+  get: (service: string) => any;
+};
+
 function RunwayPageContent() {
   const {message} = App.useApp();
 
@@ -75,7 +79,7 @@ function RunwayPageContent() {
   const [selectedInstance, setSelectedInstance] = useState<ProcessInstanceRow | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [flowNodeInstances, setFlowNodeInstances] = useState<TimedFlowNodeInstance[]>([]);
-  const viewerRef = useRef<unknown>(null);
+  const viewerRef = useRef<BpmnViewerHandle | null>(null);
 
   // ============================================================================
   // CLEAN DUAL-SELECTION ARCHITECTURE
@@ -152,6 +156,18 @@ function RunwayPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once on mount
 
+  // Incident modal hook
+  const {
+    selectedIncident,
+    showIncidentModal,
+    stacktraceWrap,
+    setSelectedIncident,
+    setShowIncidentModal,
+    setStacktraceWrap,
+    copyIncidentTitle,
+    copyIncidentStacktrace,
+  } = useIncidentModal();
+
   // Clear state and close detail pane when page initializes
   useEffect(() => {
     setSelectedInstanceId(null);
@@ -187,17 +203,6 @@ function RunwayPageContent() {
     setFlowNodeInstances(instances);
   }, []);
 
-  // Incident modal hook
-  const {
-    selectedIncident,
-    showIncidentModal,
-    stacktraceWrap,
-    setSelectedIncident,
-    setShowIncidentModal,
-    setStacktraceWrap,
-    copyIncidentTitle,
-    copyIncidentStacktrace,
-  } = useIncidentModal();
 
   // ============================================================================
   // CLEAN SELECTION EVENT HANDLERS
@@ -993,7 +998,7 @@ function RunwayPageContent() {
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [selectedDefinitionId, selectedVersion, selectedInstanceId, setSelectedIncident]);
+  }, [selectedDefinitionId, selectedVersion]); // eslint-disable-line react-hooks/exhaustive-deps -- selection changes must not retrigger this close-on-filter-change effect
 
 
   const loadProcessDefinitionIds = async () => {
