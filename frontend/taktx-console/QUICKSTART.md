@@ -7,6 +7,21 @@
 - Platform Service running on `http://localhost:8080`
 - At least one process definition deployed to TaktX
 
+## Community Edition Scope
+
+This frontend targets the **TaktX Community Console** setup, which is intended for
+development, testing, demos, and evaluation, with only limited production
+suitability where its constraints are acceptable.
+
+Current community-edition constraints:
+
+- single namespace
+- single ingester (`ingesters:inmemory`)
+- in-memory ingester, so managed data/configuration is lost on restart
+- no identity provider integration
+- no RBAC
+- no signing or validation features
+
 ## Start the Frontend
 
 ### Option 1: Use the helper script

@@ -19,6 +19,28 @@ The frontend talks to the **Platform Service** (BFF), not directly to the ingest
 
 WebSocket connections are also obtained through the BFF via `GET /api/runway/ws-token`.
 
+## Community Edition Purpose and Scope
+
+This frontend is part of the **TaktX Community Console** and is intended primarily for:
+
+- local development
+- testing and demos
+- technical evaluation
+- limited production use only where the community-edition constraints are acceptable
+
+The community edition supports only:
+
+- a single namespace
+- a single ingester (`ingesters:inmemory`)
+- the in-memory ingester variant, so managed data/configuration is lost on restart
+
+The community edition does **not** include:
+
+- identity provider integration
+- RBAC
+- signing features
+- validation features
+
 ## Getting Started
 
 ### Prerequisites
@@ -85,7 +107,7 @@ lib/
 - Process definition browser
 - BPMN diagram rendering
 - Runway live monitoring
-- Same-origin deployment behind nginx to avoid CORS in production
+- Same-origin deployment behind nginx to avoid CORS in Docker/nginx deployments
 
 ## API Integration
 

@@ -157,6 +157,9 @@ services:
       # Changing these on a cluster with existing data is a BREAKING MIGRATION.
       - TAKTX_ENGINE_TENANT_ID=acme
       - TAKTX_ENGINE_NAMESPACE=default
+    # Community edition note: this ingester is in-memory. Its managed data/configuration
+    # is not persisted across restarts. Persisted variants are planned separately and
+    # require the full TaktX Control Console feature set.
     # Optional: Persist TaktX client data (process definitions, etc.)
     # volumes:
     #   - ./taktx-console-data:/home/taktx/.taktx

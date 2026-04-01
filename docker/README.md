@@ -5,10 +5,32 @@ This document describes how to build and run the Apache 2.0 open-source TaktX Co
 ## Overview
 
 The TaktX Community Console consists of four main services:
-- **Platform Service**: Quarkus-based Java BFF (Backend for Frontend) that validates JWTs, manages process definitions and exposes the REST API to the frontend
+- **Platform Service**: Quarkus-based Java BFF (Backend for Frontend) that manages process definitions and exposes the REST API to the frontend
 - **Ingester (In-Memory)**: Quarkus-based Java service that pushes data into the TaktX Engine via Kafka
 - **Frontend**: Next.js React application providing the UI
 - **Nginx** (recommended): Reverse proxy that serves frontend and backend from the same origin, eliminating CORS
+
+> **Community edition limitation:** the shipped ingester is the **in-memory** variant.
+> Configuration and data handled by it are **lost after restart**. Persisted ingester
+> variants are planned separately and require **TaktX Control Console** capabilities
+> such as multi-tenancy, RBAC, signing, and validation.
+
+The community edition is intentionally scoped as a lightweight setup for development,
+testing, demos, and evaluation. It supports only:
+
+- a single namespace
+- a single ingester (`ingesters:inmemory`)
+- the in-memory ingester variant
+
+It does **not** include:
+
+- identity provider integration
+- RBAC
+- signing features
+- validation features
+
+For that reason, it is appropriate for testing/evaluation and only limited
+production scenarios where those constraints are acceptable.
 
 ## Prerequisites
 
@@ -46,7 +68,7 @@ Note: Accessing the frontend directly at :3001 while the backend is at :8080 req
 ```
 Browser → Nginx (3002) → Frontend + Platform Service (same origin, no CORS)
 ```
-✅ Production-ready, no CORS issues, single entry point
+✅ Recommended local and evaluation setup, no CORS issues, single entry point
 
 ### Option 2: Direct Access
 ```
@@ -75,6 +97,9 @@ This starts:
 - TaktX Ingester (In-Memory) — Kafka producer
 - TaktX Community Console Frontend — UI
 - Nginx — reverse proxy
+
+Because the community ingester is in-memory, restarting or recreating the ingester
+container resets its stored data/configuration.
 
 Access the console at: http://localhost:3002
 
@@ -197,7 +222,7 @@ All services run on the default Docker network created by Docker Compose. Servic
 - Platform Service → Kafka: `kafka:9094`
 - Ingester → Kafka: `kafka:9094`
 
-## Development vs Production
+## Development and Deployment Notes
 
 ### Local Development Mode (Native)
 
@@ -241,13 +266,17 @@ The frontend needs to know where the platform service is. In local dev there is 
 
 3. Restart the frontend dev server.
 
-### Production Mode (Docker)
+### Docker Runtime Mode
 
-Use Docker Compose as described above. The images are optimized for production with:
+Use Docker Compose as described above. The images are container-ready with:
 - Multi-stage builds for smaller image sizes
 - Non-root users for security
 - Health checks
 - Proper dependency management
+
+However, the community-edition ingester remains in-memory, so this stack should be
+treated as a development, demo, and evaluation deployment unless data loss on
+ingester restart is acceptable.
 
 ## Troubleshooting
 

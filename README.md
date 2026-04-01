@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Open-source community console for [TaktX Engine](https://github.com/taktx-io). Use it for development, testing, and limited production deployments.
+Open-source community console for [TaktX Engine](https://github.com/taktx-io). Use it for development, testing, evaluation, and only limited production scenarios where the community-edition constraints are acceptable.
 
 ---
 
@@ -12,7 +12,33 @@ The TaktX Community Console is a web-based management UI and supporting backend 
 
 - Browse and inspect deployed process definitions (BPMN diagrams)
 - Monitor live process instances on the Runway view
-- Manage the TaktX in-memory ingester (pushes configuration & license data to the engine via Kafka)
+
+> **Community edition limitation:** the currently shipped ingester is **in-memory**.
+> Configuration and data managed through it are **lost when the ingester restarts**.
+> Persisted ingester variants are planned separately and require the full
+> **TaktX Control Console** capabilities for multi-tenancy, RBAC, signing, and validation.
+
+### Community Edition Purpose and Scope
+
+The **community edition** is intended as a lightweight setup for:
+
+- local development
+- testing and demos
+- technical evaluation of TaktX Engine integration
+- limited production use only where its constraints are acceptable
+
+The current community edition supports only:
+
+- a **single namespace**
+- a **single ingester** (`ingesters:inmemory`)
+- the **in-memory** ingester variant, so managed data/configuration is lost on restart
+
+The community edition does **not** include:
+
+- identity provider integration
+- RBAC
+- signing features
+- validation features
 
 ---
 
@@ -31,8 +57,8 @@ Browser
 | Service | Technology | Role |
 |---|---|---|
 | `taktx-console-frontend` | Next.js (React) | UI — BPMN viewer, Runway |
-| `taktx-platform-service` | Quarkus (Java 21) | BFF — REST API, JWT validation |
-| `taktx-ingester-inmemory` | Quarkus (Java 21) | Kafka producer — pushes config to engine |
+| `taktx-platform-service` | Quarkus (Java 21) | BFF — community-edition REST API |
+| `taktx-ingester-inmemory` | Quarkus (Java 21) | Kafka producer — single-namespace community ingester |
 | `nginx` | Nginx | Reverse proxy — same-origin, no CORS |
 | `kafka` | Apache Kafka (KRaft) | Message broker |
 | `taktx` *(optional)* | TaktX Engine | Process execution engine |
@@ -56,6 +82,9 @@ docker compose --profile console up -d
 ```
 
 Open **http://localhost:3002** in your browser.
+
+> Note: this stack uses the in-memory community ingester. Restarting the ingester
+> resets its stored data/configuration.
 
 ### Run the full stack (console + TaktX Engine + observability)
 
@@ -103,9 +132,9 @@ See [`docker/README.md`](docker/README.md) for environment variable reference.
 ```
 TaktX-Community-Console/
 ├── backend/
-│   ├── platform-service/      # BFF: REST API, JWT validation, WebSocket token exchange
+│   ├── platform-service/      # BFF: community-edition REST API and WebSocket support
 │   └── ingesters/
-│       └── inmemory/          # Kafka producer: pushes config & license to TaktX Engine
+│       └── inmemory/          # Single-namespace in-memory Kafka producer for the community edition
 ├── docker/
 │   ├── docker-compose.yaml    # All Docker profiles (console, full, observability)
 │   ├── nginx.conf             # Reverse proxy configuration

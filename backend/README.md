@@ -6,8 +6,24 @@ Quarkus-based backend for the TaktX Community Console.
 
 | Module | Gradle target | Port | Role |
 |---|---|---|---|
-| `platform-service` | `:platform-service` | 8080 | BFF — REST API exposed to the frontend; validates JWTs, manages process definitions, issues WebSocket tokens |
-| `ingesters:inmemory` | `:ingesters:inmemory` | 8084 | Kafka producer — pushes TaktX configuration (license, signing keys, process definitions) to the engine at startup |
+| `platform-service` | `:platform-service` | 8080 | BFF — community-edition REST API exposed to the frontend; manages process definitions and runtime proxying |
+| `ingesters:inmemory` | `:ingesters:inmemory` | 8084 | Kafka producer — pushes TaktX configuration (license, signing keys, process definitions) to the engine at startup; community-edition in-memory variant, so data/configuration is lost on restart |
+
+> **Important:** the community edition currently ships only with the in-memory ingester.
+> Persisted ingester variants are planned separately and require the full
+> **TaktX Control Console** feature set, including multi-tenancy, RBAC, signing,
+> and validation.
+
+The backend in this repository is intentionally scoped for the community edition:
+
+- single namespace / single ingester setup
+- no identity provider integration
+- no RBAC
+- no signing features
+- no validation features
+
+It is primarily intended for development, testing, and evaluation, with only
+limited production suitability where those constraints are acceptable.
 
 ## Prerequisites
 
