@@ -291,6 +291,24 @@ docker compose --profile console up -d --build
 
 **Exposed Ports**: 3000
 
+## GitHub Actions publishing
+
+The repository contains two GitHub Actions workflows for container automation:
+
+- [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on pushes and pull requests. It validates the backend and frontend, then builds all three Docker images as a CI check without pushing them.
+- [`.github/workflows/release.yml`](../.github/workflows/release.yml) runs when a GitHub Release is **published** and pushes the three images to GHCR.
+
+The release workflow accepts both `v1.2.3` and `1.2.3` style tags. It normalizes the version and publishes:
+
+- `ghcr.io/<repository-owner>/taktx-community-platform-service:<version>`
+- `ghcr.io/<repository-owner>/taktx-community-platform-service:latest`
+- `ghcr.io/<repository-owner>/taktx-community-ingester-inmemory:<version>`
+- `ghcr.io/<repository-owner>/taktx-community-ingester-inmemory:latest`
+- `ghcr.io/<repository-owner>/taktx-community-console-frontend:<version>`
+- `ghcr.io/<repository-owner>/taktx-community-console-frontend:latest`
+
+Only Docker images are published by the release automation. No JAR files or Maven artifacts are uploaded.
+
 ## Building Images Manually
 
 ### Platform Service

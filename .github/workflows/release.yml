@@ -1,0 +1,105 @@
+name: Release
+on:
+  release:
+    types:
+      - published
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
+jobs:
+  prepare:
+    name: Prepare release metadata
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      ghcr_owner: ${{ steps.owner.outputs.value }}
+    steps:
+      - name: Normalize release version
+        id: version
+        shell: bash
+        run: |
+          TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          VERSION="${TAG#v}"
+          if [ -z "$VERSION" ]; then
+            echo "Release tag name is empty" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using release version: $VERSION"
+      - name: Normalize GHCR owner
+        id: owner
+        shell: bash
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          OWNER_LOWER=$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "value=$OWNER_LOWER" >> "$GITHUB_OUTPUT"
+          echo "Using GHCR owner: $OWNER_LOWER"
+  publish-images:
+    name: Publish Docker images
+    runs-on: ubuntu-latest
+    needs: prepare
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image_name: taktx-community-platform-service
+            context: ./backend
+            file: ./backend/platform-service/Dockerfile
+            build_args: ""
+          - image_name: taktx-community-ingester-inmemory
+            context: ./backend
+            file: ./backend/ingesters/inmemory/Dockerfile
+            build_args: ""
+          - image_name: taktx-community-console-frontend
+            context: ./frontend
+            file: ./frontend/Dockerfile
+            build_args: |
+              NEXT_PUBLIC_PLATFORM_SERVICE_URL=
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate Docker image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ needs.prepare.outputs.ghcr_owner }}/${{ matrix.image_name }}
+          tags: |
+            type=raw,value=${{ needs.prepare.outputs.version }}
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.title=${{ matrix.image_name }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}
+      - name: Build and push ${{ matrix.image_name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: false
+          sbom: false
+          build-args: ${{ matrix.build_args }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=release-${{ matrix.image_name }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.image_name }}

@@ -127,6 +127,23 @@ docker compose --profile console up -d --build
 
 See [`docker/README.md`](docker/README.md) for full details on profiles, environment variables, and configuration.
 
+### CI and Docker releases
+
+This repository now includes GitHub Actions workflows under [`.github/workflows/`](.github/workflows):
+
+- [`ci.yml`](.github/workflows/ci.yml) runs on pushes and pull requests to validate the backend and frontend, then builds the three Docker images without publishing them.
+- [`release.yml`](.github/workflows/release.yml) runs when a GitHub Release is **published** and pushes Docker images to GitHub Container Registry (GHCR).
+
+Release tags may be created as either `v1.2.3` or `1.2.3`. The workflow normalizes both forms and publishes these images under `ghcr.io/<repository-owner>/`:
+
+- `taktx-community-platform-service`
+- `taktx-community-ingester-inmemory`
+- `taktx-community-console-frontend`
+
+Each published release updates both the version tag and `latest` for all three images.
+
+> Release automation in this repository publishes **Docker images only**. It does **not** publish JAR files or Maven artifacts.
+
 ---
 
 ## Development Setup
