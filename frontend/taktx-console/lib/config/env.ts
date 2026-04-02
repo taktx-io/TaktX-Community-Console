@@ -43,3 +43,7 @@ export const TAKTX_WS_URL =
         ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`
         : '/ws');
 
+// Application release version — injected at build time via NEXT_PUBLIC_APP_VERSION.
+// Falls back to 'dev' when running locally without the env var set.
+export const APP_VERSION: string = process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
+

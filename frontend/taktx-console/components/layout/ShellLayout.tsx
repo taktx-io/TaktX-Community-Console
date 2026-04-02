@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { DashboardOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import React from 'react';
+import { APP_VERSION } from '@/lib/config/env';
 
 const { Sider, Header, Content } = Layout;
 
@@ -54,6 +55,7 @@ export default function ShellLayout({ children }: Readonly<ShellLayoutProps>) {
         collapsed={collapsed}
         onCollapse={setCollapsed}
         collapsedWidth={80}
+        style={{ display: 'flex', flexDirection: 'column' }}
       >
         <div style={{
           padding: collapsed ? '16px 12px' : '16px',
@@ -85,6 +87,21 @@ export default function ShellLayout({ children }: Readonly<ShellLayoutProps>) {
           items={menuItems}
           onClick={handleMenuClick}
         />
+        {/* Version badge — hidden when sidebar is collapsed */}
+        {!collapsed && (
+          <div style={{
+            marginTop: 'auto',
+            padding: '12px 16px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            color: 'rgba(255, 255, 255, 0.35)',
+            fontSize: '11px',
+            textAlign: 'center',
+            letterSpacing: '0.03em',
+            userSelect: 'none',
+          }}>
+            v{APP_VERSION}
+          </div>
+        )}
       </Sider>
       <Layout style={{ display: 'flex', flexDirection: 'column' }}>
         <Header style={{

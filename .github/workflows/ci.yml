@@ -125,6 +125,7 @@ jobs:
             file: ./frontend/Dockerfile
             build_args: |
               NEXT_PUBLIC_PLATFORM_SERVICE_URL=
+              NEXT_PUBLIC_APP_VERSION=ci
 
     steps:
       - name: Check out repository
