@@ -1,5 +1,5 @@
 import { Space, Button, Tooltip, Badge } from 'antd';
-import { LinkOutlined, ThunderboltOutlined, BgColorsOutlined, TagsOutlined, PlayCircleOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, LinkOutlined, ThunderboltOutlined, BgColorsOutlined, TagsOutlined, PlayCircleOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import StatusBadge from './StatusBadge';
 
 interface DiagramCardHeaderProps {
@@ -38,6 +38,8 @@ interface DiagramCardHeaderProps {
   /** Toggle jobs panel */
   onToggleJobsPanel?: () => void;
   /** Active jobs count for badge */
+  /** Callback to navigate back to BPMN view (shown when in DMN view) */
+  onBackToBpmn?: () => void;
   activeJobsCount?: number;
 }
 
@@ -69,10 +71,27 @@ export default function DiagramCardHeader({
   showStartInstance = false,
   jobsPanelCollapsed,
   onToggleJobsPanel,
-  activeJobsCount = 0,
-}: DiagramCardHeaderProps) {
+  onBackToBpmn,
+  activeJobsCount,
+}: Readonly<DiagramCardHeaderProps>) {
   return (
     <Space size="small" align="center">
+      {/* Back to BPMN button — shown when viewing DMN */}
+      {onBackToBpmn && (
+        <Tooltip title="Back to BPMN diagram" placement="bottom">
+          <Button
+            type="text"
+            size="small"
+            aria-label="Back to BPMN diagram"
+            icon={<ArrowLeftOutlined style={{ fontSize: 16, color: '#1677ff' }} />}
+            onClick={onBackToBpmn}
+            style={{ padding: 4 }}
+          >
+            <span style={{ fontSize: 12, color: '#1677ff' }}>BPMN</span>
+          </Button>
+        </Tooltip>
+      )}
+
       {showStartInstance && onStartInstance && (
         <Tooltip title="Start process instances" placement="bottom">
           <Button

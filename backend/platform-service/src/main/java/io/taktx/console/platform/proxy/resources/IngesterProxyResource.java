@@ -131,6 +131,22 @@ public class IngesterProxyResource {
   }
 
   /**
+   * Get DMN definition XML for a given DMN definition ID (latest version).
+   *
+   * <p>Kept outside {@code /processdefinitions/} to avoid routing conflicts when a DMN identifier
+   * shares a prefix with other path segments.
+   *
+   * <p>Example: GET /api/runway/dmn/{dmnDefinitionId}/xml
+   */
+  @GET
+  @Path("/dmn/{dmnDefinitionId}/xml")
+  @Produces(MediaType.APPLICATION_XML)
+  public Response getDmnXml(@PathParam("dmnDefinitionId") String dmnDefinitionId) {
+    IngesterClient client = createClient();
+    return client.getDmnXml(dmnDefinitionId);
+  }
+
+  /**
    * Start process instance(s). Requires START permission. Resolves version -1 (latest) to a
    * concrete version before signing — never signs -1.
    *

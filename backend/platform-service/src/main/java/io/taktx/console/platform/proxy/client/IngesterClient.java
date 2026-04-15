@@ -42,6 +42,11 @@ public interface IngesterClient {
   Response getProcessXml(
       @PathParam("id") String processDefinitionId, @PathParam("version") int version);
 
+  @GET
+  @Path("/dmn/{dmnDefinitionId}/xml")
+  @Produces(MediaType.APPLICATION_XML)
+  Response getDmnXml(@PathParam("dmnDefinitionId") String dmnDefinitionId);
+
   @POST
   @Path("/processdefinitions/{id}/version/{version}/start")
   @Consumes(MediaType.APPLICATION_JSON)

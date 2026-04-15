@@ -14,7 +14,7 @@ subprojects {
     apply(plugin = "java")
 
     group = "io.taktx.console"
-    version = "0.4.0-beta-1"
+    version = "0.5.1-beta"
 
     java {
         toolchain {

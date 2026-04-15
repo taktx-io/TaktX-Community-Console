@@ -204,6 +204,23 @@ export async function getProcessInstances(
 }
 
 /**
+ * Fetch DMN XML for a given DMN definition ID (latest version).
+ * GET /api/runway/dmn/{dmnDefinitionId}/xml
+ *
+ * Routes through Platform Service BFF.
+ */
+export async function getDmnDefinitionXml(dmnDefinitionId: string): Promise<string> {
+  const url = `${PLATFORM_SERVICE_URL}/api/runway/dmn/${encodeURIComponent(dmnDefinitionId)}/xml`;
+  const response = await authFetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch DMN XML for '${dmnDefinitionId}': ${response.statusText}`);
+  }
+
+  return response.text();
+}
+
+/**
  * Start process instance(s) for a specific version of a process definition
  * POST /api/runway/processdefinitions/{id}/version/{version}/start
  * Accepts an array of variables objects (one per instance to start)

@@ -3,6 +3,7 @@
 import {useCallback, useEffect, useMemo, useRef, useState, Suspense} from 'react';
 import {Alert, App, Button, Card} from 'antd';
 import {LinkOutlined} from '@ant-design/icons';
+import DmnViewerComponent from '@/components/dmn/DmnViewer';
 import BpmnViewerComponent from '@/components/runway/BpmnViewer';
 import ProcessInstanceTable from '@/components/runway/ProcessInstanceTable';
 import ProcessInstanceDetail from '@/components/runway/ProcessInstanceDetail';
@@ -21,6 +22,7 @@ import BadgeSettings, {
 import {
   getProcessDefinitionIds,
   getProcessDefinitionVersions,
+  getDmnDefinitionXml,
   getProcessDefinitionXml,
   type ProcessDefinitionVersionInfo,
   type ProcessInstanceRow,
@@ -49,6 +51,7 @@ import {loadOverlaySettings} from '@/lib/utils/overlaySettingsLoader';
 import JobsPanel from '@/components/runway/JobsPanel';
 import {getActiveJobCount} from '@/lib/utils/jobStorage';
 import {loadBatches, saveBatch} from '@/lib/utils/batchStorage';
+import {extractCalledDecisions, getCalledDecision} from '@/lib/utils/bpmnDmnBridge';
 import {useRunwayUrlSync} from '@/lib/hooks/useRunwayUrlSync';
 import {useDetailPaneResize} from '@/lib/hooks/useDetailPaneResize';
 import {useIncidentModal} from '@/lib/hooks/useIncidentModal';
@@ -73,6 +76,9 @@ function RunwayPageContent() {
   const [endTimeFrom, setEndTimeFrom] = useState<Date | null>(null);
   const [endTimeTo, setEndTimeTo] = useState<Date | null>(null);
   const [bpmnXml, setBpmnXml] = useState<string | null>(null);
+  const [dmnXml, setDmnXml] = useState<string | null>(null);
+  const [dmnLoading, setDmnLoading] = useState(false);
+  const [selectedDmnDecisionId, setSelectedDmnDecisionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
@@ -102,6 +108,7 @@ function RunwayPageContent() {
   const bottomCardRef = useRef<HTMLDivElement | null>(null);
   // token to cancel/ignore stale loadBpmnXml results
   const bpmnRequestTokenRef = useRef<number>(0);
+  const dmnRequestTokenRef = useRef<number>(0);
   // pending version to set after definition change (from instance selection)
   const pendingVersionRef = useRef<number | null>(null);
   // flag to indicate if diagram switch is from instance selection (don't close detail)
@@ -179,6 +186,9 @@ function RunwayPageContent() {
     setFlowNodeInstances([]);
     setViewedBpmnDefinition(null);
     setViewedBpmnVersion(null);
+    setSelectedDmnDecisionId(null);
+    setDmnXml(null);
+    setDmnLoading(false);
   }, [setSelectedIncident]);
 
   // Filter panel collapsed state
@@ -298,10 +308,57 @@ function RunwayPageContent() {
     setSelectedFlowNodeInstanceKey(null);
   }, []);
 
+  const calledDecisions = useMemo(
+    () => (bpmnXml ? extractCalledDecisions(bpmnXml) : new Map()),
+    [bpmnXml]
+  );
+
+  const selectedCalledDecision = useMemo(
+    () => (selectedElementId ? getCalledDecision(selectedElementId, calledDecisions) : null),
+    [selectedElementId, calledDecisions]
+  );
+
+  const handleViewDecision = useCallback(async (decisionId: string) => {
+    const token = ++dmnRequestTokenRef.current;
+
+    setSelectedDmnDecisionId(decisionId);
+    setDmnXml(null);
+    setDmnLoading(true);
+    setError(null);
+
+    try {
+      const xml = await getDmnDefinitionXml(decisionId);
+      if (dmnRequestTokenRef.current !== token) {
+        return;
+      }
+      setDmnXml(xml);
+    } catch (err) {
+      if (dmnRequestTokenRef.current !== token) {
+        return;
+      }
+      console.error('[RunwayPage] Error loading DMN XML:', err);
+      setSelectedDmnDecisionId(null);
+      setDmnXml(null);
+      setError(`Failed to load DMN decision '${decisionId}'`);
+    } finally {
+      if (dmnRequestTokenRef.current === token) {
+        setDmnLoading(false);
+      }
+    }
+  }, []);
+
+  const handleBackToBpmn = useCallback(() => {
+    dmnRequestTokenRef.current += 1;
+    setSelectedDmnDecisionId(null);
+    setDmnXml(null);
+    setDmnLoading(false);
+  }, []);
+
   // Track the BPMN being viewed (may come from filters OR from selected instance)
   // This is separate from filter state to maintain independence
   const [viewedBpmnDefinition, setViewedBpmnDefinition] = useState<string | null>(null);
   const [viewedBpmnVersion, setViewedBpmnVersion] = useState<number | null>(null);
+  const isViewingDmn = selectedDmnDecisionId !== null;
 
   // Single overlay settings state (controls the global overlay panel)
   const [overlayOpen, setOverlayOpen] = useState(false);
@@ -948,6 +1005,13 @@ function RunwayPageContent() {
     }
   }, [viewedBpmnDefinition, viewedBpmnVersion, versions, versionsOwner, loadBpmnXml]);
 
+  useEffect(() => {
+    dmnRequestTokenRef.current += 1;
+    setSelectedDmnDecisionId(null);
+    setDmnXml(null);
+    setDmnLoading(false);
+  }, [viewedBpmnDefinition, viewedBpmnVersion]);
+
   // Apply pending version after versions are loaded (from instance selection)
   useEffect(() => {
     if (pendingVersionRef.current !== null && versions.length > 0 && versionsOwner === selectedDefinitionId) {
@@ -1160,7 +1224,9 @@ function RunwayPageContent() {
                             // Show BPMN Diagram when a definition is selected
                             <Card
                                 title={
-                                  selectedInstanceId
+                                  isViewingDmn && selectedDmnDecisionId
+                                      ? `DMN Decision: ${selectedDmnDecisionId}`
+                                      : selectedInstanceId
                                       ? `Process Instance: ${selectedInstanceId}`
                                       : viewedBpmnDefinition && viewedBpmnVersion !== null
                                           ? (() => {
@@ -1207,6 +1273,7 @@ function RunwayPageContent() {
                                       showStartInstance={true}
                                       jobsPanelCollapsed={jobsPanelCollapsed}
                                       onToggleJobsPanel={() => setJobsPanelCollapsed(v => !v)}
+                                       onBackToBpmn={isViewingDmn ? handleBackToBpmn : undefined}
                                       activeJobsCount={activeJobsCount}
                                   />
                                 }
@@ -1220,7 +1287,7 @@ function RunwayPageContent() {
                                   }
                                 }}
                             >
-                              {selectedIncident && (
+                              {!isViewingDmn && selectedIncident && (
                                   <IncidentAlertBanner
                                       incident={selectedIncident}
                                       onShowStacktrace={() => setShowIncidentModal(true)}
@@ -1228,7 +1295,7 @@ function RunwayPageContent() {
                               )}
 
                               {/* Parent Instance Info Banner */}
-                              {selectedInstanceId && selectedInstance?.parentProcessInstanceId && (
+                              {!isViewingDmn && selectedInstanceId && selectedInstance?.parentProcessInstanceId && (
                                   <div style={{
                                     padding: '8px 12px',
                                     background: '#e6f7ff',
@@ -1268,48 +1335,61 @@ function RunwayPageContent() {
                                 flexDirection: 'column',
                                 overflow: 'hidden'
                               }}>
-                                <BpmnViewerComponent
-                                    bpmnXml={bpmnXml}
-                                    loading={loading}
-                                    showLiveOverlay={true}
-                                    animationTriggers={animationTriggers}
-                                    overlaySettings={overlaySettings}
-                                    overlayEnabled={realtimeHighlightsEnabled}
-                                    debugTrigger={debugTrigger}
-                                    selectedDefinitionId={viewedBpmnDefinition}
-                                    selectedVersion={viewedBpmnVersion}
-                                    processInstanceId={selectedInstanceId}
-                                    showBadges={true}
-                                    aggregateBadgeSettings={aggregateBadgeSettings}
-                                    instanceBadgeSettings={instanceBadgeSettings}
-                                    aggregateState={aggregateState}
-                                    instanceState={instanceState}
-                                    processInstanceHeatmap={processInstanceHeatmap}
-                                    clickableLinks={clickableLinks}
-                                    onLinkClick={(link) => {
-                                      if (link.targetInstanceId) {
-                                        navigateToInstance(link.targetInstanceId);
-                                      }
-                                    }}
-                                    onElementClick={handleDiagramElementClick}
-                                    selectedElementId={selectedElementId}
-                                    onViewerReady={(viewer) => {
-                                      viewerRef.current = viewer;
-                                    }}
-                                />
-
-                                {/* Flow Node Detail Popup - positioned within BPMN viewer area */}
-                                {selectedInstanceId && selectedElementId && flowNodeInstances.length > 0 && viewerRef.current && (
-                                    <FlowNodeDetailPopup
-                                        elementId={selectedElementId}
-                                        flowNodeInstances={flowNodeInstances}
-                                        overlaySettings={overlaySettings}
-                                        onClose={handlePopupClose}
-                                        viewer={viewerRef.current}
-                                        selectedFlowNodeInstanceKey={selectedFlowNodeInstanceKey}
-                                        onInstanceSelect={handlePopupInstanceChange}
+                                {isViewingDmn ? (
+                                    <DmnViewerComponent
+                                        dmnXml={dmnXml}
+                                        loading={dmnLoading}
+                                        activeDecisionId={selectedDmnDecisionId}
                                     />
+                                ) : (
+                                    <>
+                                      <BpmnViewerComponent
+                                          bpmnXml={bpmnXml}
+                                          loading={loading}
+                                          showLiveOverlay={true}
+                                          animationTriggers={animationTriggers}
+                                          overlaySettings={overlaySettings}
+                                          overlayEnabled={realtimeHighlightsEnabled}
+                                          debugTrigger={debugTrigger}
+                                          selectedDefinitionId={viewedBpmnDefinition}
+                                          selectedVersion={viewedBpmnVersion}
+                                          processInstanceId={selectedInstanceId}
+                                          showBadges={true}
+                                          aggregateBadgeSettings={aggregateBadgeSettings}
+                                          instanceBadgeSettings={instanceBadgeSettings}
+                                          aggregateState={aggregateState}
+                                          instanceState={instanceState}
+                                          processInstanceHeatmap={processInstanceHeatmap}
+                                          clickableLinks={clickableLinks}
+                                          onLinkClick={(link) => {
+                                            if (link.targetInstanceId) {
+                                              navigateToInstance(link.targetInstanceId);
+                                            }
+                                          }}
+                                          onElementClick={handleDiagramElementClick}
+                                          selectedElementId={selectedElementId}
+                                          onViewerReady={(viewer) => {
+                                            viewerRef.current = viewer;
+                                          }}
+                                      />
+
+                                      {/* Flow Node Detail Popup - positioned within BPMN viewer area */}
+                                      {selectedInstanceId && selectedElementId && flowNodeInstances.length > 0 && viewerRef.current && (
+                                          <FlowNodeDetailPopup
+                                              elementId={selectedElementId}
+                                              flowNodeInstances={flowNodeInstances}
+                                              overlaySettings={overlaySettings}
+                                              onClose={handlePopupClose}
+                                              viewer={viewerRef.current}
+                                              selectedFlowNodeInstanceKey={selectedFlowNodeInstanceKey}
+                                              onInstanceSelect={handlePopupInstanceChange}
+                                              calledDecisionId={selectedCalledDecision?.decisionId ?? null}
+                                              onViewDecision={handleViewDecision}
+                                          />
+                                      )}
+                                    </>
                                 )}
+
                               </div>
 
                               <IncidentModal

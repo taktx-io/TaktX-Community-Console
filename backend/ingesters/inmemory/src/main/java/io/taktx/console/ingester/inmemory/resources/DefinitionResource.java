@@ -34,12 +34,16 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @Path("/processdefinitions")
 @Slf4j
 public class DefinitionResource {
 
   @Inject TaktXClient taktClient;
+
+  @ConfigProperty(name = "taktx.engine.namespace")
+  String namespace;
 
   @GET
   @Produces(MediaType.APPLICATION_JSON)

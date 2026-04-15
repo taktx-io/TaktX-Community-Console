@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Select, Button, Tooltip, Modal } from 'antd';
-import { CloseOutlined, FileTextOutlined } from '@ant-design/icons';
+import { CloseOutlined, FileTextOutlined, ApartmentOutlined } from '@ant-design/icons';
 import type { TimedFlowNodeInstance } from '@/lib/api/processInstanceApi';
 import { filterFlowNodeInstancesByElementId, formatTimestampWithMs, findInstanceByKey, generateFlowNodeInstanceKey } from '@/lib/utils/flowNodeInstanceUtils';
 import { getStateColor } from '@/lib/utils/stateColors';
@@ -24,6 +24,10 @@ interface FlowNodeDetailPopupProps {
   onInstanceSelect?: (instanceKey: string) => void;
   selectedFlowNodeInstanceKey?: string | null; // Current selection key from parent
   viewer: any; // bpmn-js viewer instance for positioning and highlighting
+  /** When set, the selected element is a businessRuleTask referencing this decision. */
+  calledDecisionId?: string | null;
+  /** Called when the user clicks "View Decision" for a businessRuleTask. */
+  onViewDecision?: (decisionId: string) => void;
 }
 
 export default function FlowNodeDetailPopup({
@@ -34,6 +38,8 @@ export default function FlowNodeDetailPopup({
   onInstanceSelect,
   selectedFlowNodeInstanceKey,
   viewer,
+  calledDecisionId,
+  onViewDecision,
 }: Readonly<FlowNodeDetailPopupProps>) {
   const popupRef = useRef<HTMLDivElement>(null);
   const [showJsonModal, setShowJsonModal] = useState(false);
@@ -402,6 +408,17 @@ export default function FlowNodeDetailPopup({
             </span>
           </div>
           <div style={{ display: 'flex', gap: '2px' }}>
+            {calledDecisionId && onViewDecision && (
+              <Tooltip title={`View DMN decision: ${calledDecisionId}`}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<ApartmentOutlined style={{ fontSize: '12px', color: '#eb2f96' }} />}
+                  onClick={() => onViewDecision(calledDecisionId)}
+                  style={{ padding: '2px 4px', height: 'auto' }}
+                />
+              </Tooltip>
+            )}
             <Tooltip title="View JSON Details">
               <Button
                 type="text"
@@ -474,6 +491,21 @@ export default function FlowNodeDetailPopup({
               </>
             )}
           </div>
+
+          {/* View Decision footer — shown for businessRuleTask elements */}
+          {calledDecisionId && onViewDecision && (
+            <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px solid #f0f0f0' }}>
+              <Button
+                type="link"
+                size="small"
+                icon={<ApartmentOutlined style={{ fontSize: '11px' }} />}
+                onClick={() => onViewDecision(calledDecisionId)}
+                style={{ padding: 0, height: 'auto', fontSize: '11px', color: '#eb2f96' }}
+              >
+                View Decision: {calledDecisionId}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

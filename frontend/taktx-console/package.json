@@ -1,6 +1,6 @@
 {
   "name": "taktx-console",
-  "version": "0.4.0-beta-1",
+  "version": "0.5n.1-beta",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
@@ -24,6 +24,7 @@
     "@ant-design/nextjs-registry": "^1.2.0",
     "antd": "^5.28.1",
     "bpmn-js": "^18.8.0",
+    "dmn-js": "^17.7.0",
     "next": "16.0.3",
     "react": "19.2.0",
     "react-colorful": "^5.6.1",

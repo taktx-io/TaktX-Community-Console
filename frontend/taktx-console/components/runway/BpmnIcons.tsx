@@ -11,7 +11,7 @@ export type BpmnElementType =
   | 'task'
   | 'userTask'
   | 'serviceTask'
-  | 'callActivity'
+  | 'businessRuleTask'
   | 'subProcess'
   | 'exclusiveGateway'
   | 'parallelGateway'
@@ -140,6 +140,21 @@ export function SubProcessIcon({ size = 16, stroke }: IconProps) {
     </svg>
   );
 }
+export function BusinessRuleTaskIcon({ size = 16, stroke }: IconProps) {
+  const s = size;
+  const c = stroke ?? '#eb2f96';
+  return (
+    <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} aria-hidden>
+      <rect x={1.2} y={2} width={s - 2.4} height={s - 4} rx={2.5} ry={2.5} stroke={c} strokeWidth={1.5} fill="none" />
+      {/* Header bar mimicking a decision table header */}
+      <rect x={1.2} y={2} width={s - 2.4} height={(s - 4) * 0.38} rx={2.5} ry={2.5} stroke={c} strokeWidth={0} fill={c} fillOpacity={0.18} />
+      {/* Vertical divider */}
+      <line x1={s * 0.5} y1={2} x2={s * 0.5} y2={s - 2} stroke={c} strokeWidth={1} />
+      {/* Horizontal divider between header and rows */}
+      <line x1={1.2} y1={s * 0.42} x2={s - 1.2} y2={s * 0.42} stroke={c} strokeWidth={1} />
+    </svg>
+  );
+}
 export function ExclusiveGatewayIcon({ size = 16, stroke }: IconProps) {
   const s = size;
   const c = stroke ?? '#fa8c16';
@@ -198,6 +213,8 @@ export function BpmnIcon({ type, size = 16, color }: { type?: string; size?: num
       return <CallActivityIcon size={size} stroke={stroke} />;
     case 'subprocess':
       return <SubProcessIcon size={size} stroke={stroke} />;
+    case 'businessruletask':
+      return <BusinessRuleTaskIcon size={size} stroke={stroke} />;
     case 'exclusivegateway':
       return <ExclusiveGatewayIcon size={size} stroke={stroke} />;
     case 'parallelgateway':

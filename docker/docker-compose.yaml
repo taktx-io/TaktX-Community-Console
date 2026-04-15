@@ -48,7 +48,7 @@ services:
       - KAFKA_CLUSTERS_0_PROPERTIES_PRODUCER_VALUE_SERIALIZER=org.apache.kafka.common.serialization.HexSerializer
 
   taktx:
-    image: ghcr.io/taktx-io/taktx-engine:0.4.0-beta-1
+    image: ghcr.io/taktx-io/taktx-engine:0.5.1-beta
     profiles:
       - engine
       - full
