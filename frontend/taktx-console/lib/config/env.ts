@@ -44,6 +44,6 @@ export const TAKTX_WS_URL =
         : '/ws');
 
 // Application release version — injected at build time via NEXT_PUBLIC_APP_VERSION.
-// Falls back to 'dev' when running locally without the env var set.
-export const APP_VERSION: string = process.env.NEXT_PUBLIC_APP_VERSION || 'dev';
+// Falls back to the shared development version when running locally without the env var set.
+export const APP_VERSION: string = process.env.NEXT_PUBLIC_APP_VERSION || '0.0.0-dev';
 

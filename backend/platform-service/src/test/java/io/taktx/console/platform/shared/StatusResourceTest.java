@@ -26,7 +26,7 @@ class StatusResourceTest {
         .statusCode(200)
         .body("service", is("taktx-platform-service"))
         .body("status", is("running"))
-        .body("version", is("0.1.0-SNAPSHOT"));
+        .body("version", is("0.0.0-dev"));
   }
 
   @Test

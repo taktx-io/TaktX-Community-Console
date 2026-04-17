@@ -108,10 +108,11 @@ The primary view for inspecting process definitions and monitoring running insta
   - Backend: Gradle build, Spotless format check, JUnit tests with published test reports
   - Frontend: ESLint, Jest unit tests, Next.js production build
   - Docker build validation for all three images (no push)
-- **Release workflow** (`.github/workflows/release.yml`) — triggered when a GitHub Release is published:
+- **Release workflow** (`.github/workflows/release.yml`) — triggered by pushing a release tag:
+  - Creates the GitHub Release automatically after publishing the images
   - Accepts both `v1.2.3` and `1.2.3` tag formats
-  - Publishes versioned and `latest` Docker images to GHCR for amd64 and arm64
-  - Automatically commits version bumps to `package.json` and `build.gradle.kts` back to the release branch
+  - Publishes the frontend, platform service, and ingester images from the same normalized version for amd64 and arm64
+  - Updates `latest` only for stable tags; prerelease tags publish only their explicit version tags
 
 ---
 

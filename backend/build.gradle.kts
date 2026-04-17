@@ -3,7 +3,14 @@ plugins {
     alias(libs.plugins.spotless)
 }
 
+val taktxVersion = providers.gradleProperty("taktxVersion")
+    .orElse(providers.environmentVariable("TAKTX_APP_VERSION"))
+    .orElse("0.0.0-dev")
+    .get()
+
 allprojects {
+    version = taktxVersion
+
     repositories {
         mavenLocal()
         mavenCentral()
@@ -14,7 +21,6 @@ subprojects {
     apply(plugin = "java")
 
     group = "io.taktx.console"
-    version = "0.5.1-beta"
 
     java {
         toolchain {

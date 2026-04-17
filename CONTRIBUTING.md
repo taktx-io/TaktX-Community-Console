@@ -12,6 +12,7 @@ features, documentation improvements, and more.
 - [How to Report a Bug](#how-to-report-a-bug)
 - [How to Request a Feature](#how-to-request-a-feature)
 - [Development Setup](#development-setup)
+- [Release Process](#release-process)
 - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Commit Messages](#commit-messages)
 - [Developer Certificate of Origin (DCO)](#developer-certificate-of-origin-dco)
@@ -102,6 +103,76 @@ npm test
 # Frontend end-to-end tests
 npm run test:e2e
 ```
+
+---
+
+## Release Process
+
+Releases are **tag-driven** and **GitHub Actions is the only supported way** to publish
+the production Docker images and create the GitHub Release.
+
+### What happens when a release tag is pushed
+
+Pushing a release tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which:
+
+- normalizes the tag (`v1.2.3` and `1.2.3` both become `1.2.3`)
+- builds the frontend, platform service, and ingester from that exact same version
+- publishes all three images to GHCR for `linux/amd64` and `linux/arm64`
+- adds immutable `sha-<shortsha>` image tags for traceability
+- updates `latest` only for stable tags
+- creates the GitHub Release automatically after image publication succeeds
+
+No manual image-publish scripts are supported.
+
+### Supported tag formats
+
+- Stable: `v1.2.3` or `1.2.3`
+- Prerelease: `v1.2.3-beta.1` or `1.2.3-beta.1`
+
+### How to cut a release
+
+1. Ensure the branch you want to release is merged and green in CI.
+2. Check out the exact commit to release, typically on `main`.
+3. Create an annotated tag.
+4. Push the tag to `origin`.
+5. Wait for the release workflow to publish the images and create the GitHub Release.
+
+Stable release example:
+
+```bash
+git checkout main
+git pull --ff-only origin main
+git tag -a v1.2.3 -m "Release v1.2.3"
+git push origin v1.2.3
+```
+
+Prerelease example:
+
+```bash
+git checkout main
+git pull --ff-only origin main
+git tag -a v1.2.3-beta.1 -m "Release v1.2.3-beta.1"
+git push origin v1.2.3-beta.1
+```
+
+### Published image tags
+
+For every release, GitHub Actions publishes the same release version for all three images:
+
+- `ghcr.io/<owner>/taktx-community-platform-service:<version>`
+- `ghcr.io/<owner>/taktx-community-ingester-inmemory:<version>`
+- `ghcr.io/<owner>/taktx-community-console-frontend:<version>`
+
+It also publishes:
+
+- `ghcr.io/<owner>/...:sha-<shortsha>` for each image
+- `:latest` for each image only when the tag is a stable release
+
+### Local Docker builds
+
+Local Docker builds are still fine for development and validation, for example via CI or
+`docker compose --build`, but they are **not** an official release mechanism and must not
+be used to publish production images.
 
 ---
 

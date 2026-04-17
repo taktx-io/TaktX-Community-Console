@@ -1,10 +1,10 @@
 name: Release
 on:
-  release:
-    types:
-      - published
+  push:
+    tags:
+      - '*'
 concurrency:
-  group: release-${{ github.workflow }}-${{ github.event.release.tag_name || github.ref }}
+  group: release-${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: false
 jobs:
   prepare:
@@ -14,19 +14,38 @@ jobs:
       contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
+      original_tag: ${{ steps.version.outputs.original_tag }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+      publish_latest: ${{ steps.version.outputs.publish_latest }}
       ghcr_owner: ${{ steps.owner.outputs.value }}
     steps:
-      - name: Normalize release version
+      - name: Normalize and validate release version
         id: version
         shell: bash
         run: |
-          TAG="${{ github.event.release.tag_name || github.ref_name }}"
+          TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
           if [ -z "$VERSION" ]; then
             echo "Release tag name is empty" >&2
             exit 1
           fi
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag '$TAG' must be semver-like, for example v1.2.3 or 1.2.3" >&2
+            exit 1
+          fi
+
+          if [[ "$VERSION" == *-* ]]; then
+            IS_PRERELEASE=true
+            PUBLISH_LATEST=false
+          else
+            IS_PRERELEASE=false
+            PUBLISH_LATEST=true
+          fi
+
+          echo "original_tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "publish_latest=$PUBLISH_LATEST" >> "$GITHUB_OUTPUT"
           echo "Using release version: $VERSION"
       - name: Normalize GHCR owner
         id: owner
@@ -50,11 +69,13 @@ jobs:
           - image_name: taktx-community-platform-service
             context: ./backend
             file: ./backend/platform-service/Dockerfile
-            build_args: ""
+            build_args: |
+              TAKTX_APP_VERSION=${{ needs.prepare.outputs.version }}
           - image_name: taktx-community-ingester-inmemory
             context: ./backend
             file: ./backend/ingesters/inmemory/Dockerfile
-            build_args: ""
+            build_args: |
+              TAKTX_APP_VERSION=${{ needs.prepare.outputs.version }}
           - image_name: taktx-community-console-frontend
             context: ./frontend
             file: ./frontend/Dockerfile
@@ -83,7 +104,8 @@ jobs:
           images: ghcr.io/${{ needs.prepare.outputs.ghcr_owner }}/${{ matrix.image_name }}
           tags: |
             type=raw,value=${{ needs.prepare.outputs.version }}
-            type=raw,value=latest
+            type=sha,format=short,prefix=sha-
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.publish_latest }}
           labels: |
             org.opencontainers.image.title=${{ matrix.image_name }}
             org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
@@ -105,39 +127,17 @@ jobs:
           cache-from: type=gha,scope=release-${{ matrix.image_name }}
           cache-to: type=gha,mode=max,scope=release-${{ matrix.image_name }}
 
-  bump-versions:
-    name: Bump version in source files
+  create-release:
+    name: Create GitHub release
     runs-on: ubuntu-latest
     needs: [prepare, publish-images]
     permissions:
       contents: write
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Create release from tag
+        uses: softprops/action-gh-release@v2
         with:
-          # Push to the branch the release was cut from (typically main)
-          ref: ${{ github.event.release.target_commitish }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update package.json version
-        run: |
-          cd frontend/taktx-console
-          npm version ${{ needs.prepare.outputs.version }} --no-git-tag-version
-          echo "package.json updated to ${{ needs.prepare.outputs.version }}"
-
-      - name: Update backend Gradle version
-        run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          sed -i "s/version = \".*\"/version = \"$VERSION\"/" backend/build.gradle.kts
-          echo "build.gradle.kts updated to $VERSION"
-
-      - name: Commit and push version bump
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add frontend/taktx-console/package.json \
-                  frontend/taktx-console/package-lock.json \
-                  backend/build.gradle.kts
-          git commit -m "chore: bump version to ${{ needs.prepare.outputs.version }} [skip ci]"
-          git push origin ${{ github.event.release.target_commitish }}
-
+          tag_name: ${{ needs.prepare.outputs.original_tag }}
+          name: ${{ needs.prepare.outputs.original_tag }}
+          generate_release_notes: true
+          prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}

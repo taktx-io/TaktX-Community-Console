@@ -50,12 +50,12 @@ public class DmnResource {
    * may be either:
    *
    * <ul>
-   *   <li>A <em>decision ID</em> (e.g. {@code "riskEvaluation"}) as referenced by a BPMN
-   *       {@code zeebe:calledDecision}. The reverse index built by the TaktX client maps every
-   *       known decision ID to the {@link DmnDefinitionKey} of its containing file, so this case
-   *       is resolved without any filesystem scan.
-   *   <li>A <em>definitions-level ID</em> (the outer {@code <definitions id="…">} attribute).
-   *       Used as a fallback: the local file cache is scanned for the highest deployed version.
+   *   <li>A <em>decision ID</em> (e.g. {@code "riskEvaluation"}) as referenced by a BPMN {@code
+   *       zeebe:calledDecision}. The reverse index built by the TaktX client maps every known
+   *       decision ID to the {@link DmnDefinitionKey} of its containing file, so this case is
+   *       resolved without any filesystem scan.
+   *   <li>A <em>definitions-level ID</em> (the outer {@code <definitions id="…">} attribute). Used
+   *       as a fallback: the local file cache is scanned for the highest deployed version.
    * </ul>
    *
    * <p>Example: GET /dmn/{dmnDefinitionId}/xml
@@ -76,7 +76,8 @@ public class DmnResource {
       // getDmnDefinitionKeyForDecision resolves a decision ID to the exact (definitionsId,
       // version) key of the DMN file that contains it.  This correctly handles the case where
       // one DMN file hosts multiple decision tables.
-      Optional<DmnDefinitionKey> keyOpt = taktClient.getDmnDefinitionKeyForDecision(dmnDefinitionId);
+      Optional<DmnDefinitionKey> keyOpt =
+          taktClient.getDmnDefinitionKeyForDecision(dmnDefinitionId);
       if (keyOpt.isPresent()) {
         DmnDefinitionKey key = keyOpt.get();
         log.debug("Resolved decision '{}' via reverse index to DMN key {}", dmnDefinitionId, key);
@@ -143,4 +144,3 @@ public class DmnResource {
     }
   }
 }
-

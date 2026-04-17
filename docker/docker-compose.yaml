@@ -102,13 +102,15 @@ services:
   taktx-platform-service:
     # Build locally with: docker compose --profile console up --build
     # Pull from registry: docker compose --profile console up  (no --build)
-    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-community-platform-service:${IMAGE_TAG:-0.2.0-beta-5}
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-community-platform-service:${IMAGE_TAG:-latest}
     profiles:
       - console
       - full
     build:
       context: ../backend
       dockerfile: platform-service/Dockerfile
+      args:
+        - TAKTX_APP_VERSION=${APP_VERSION:-0.0.0-dev}
     ports:
       - "8080:8080"
     depends_on:
@@ -133,13 +135,15 @@ services:
   taktx-ingester-inmemory:
     # Build locally with: docker compose --profile console up --build
     # Pull from registry: docker compose --profile console up  (no --build)
-    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-community-ingester-inmemory:${IMAGE_TAG:-0.2.0-beta-5}
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-community-ingester-inmemory:${IMAGE_TAG:-latest}
     profiles:
       - console
       - full
     build:
       context: ../backend
       dockerfile: ingesters/inmemory/Dockerfile
+      args:
+        - TAKTX_APP_VERSION=${APP_VERSION:-0.0.0-dev}
     # Port exposed for direct backend access (optional, mainly for debugging)
     # When using nginx reverse proxy, this can be commented out
     ports:
@@ -173,7 +177,7 @@ services:
   taktx-console-frontend:
     # Build locally with: docker compose --profile console up --build
     # Pull from registry: docker compose --profile console up  (no --build)
-    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-community-console-frontend:${IMAGE_TAG:-0.2.0-beta-5}
+    image: ${DOCKER_REGISTRY:-ghcr.io}/${DOCKER_ORG:-taktx-io}/taktx-community-console-frontend:${IMAGE_TAG:-latest}
     profiles:
       - console
       - full
@@ -183,6 +187,7 @@ services:
       args:
         # Empty = relative URLs via nginx — works on any domain without rebuild
         - NEXT_PUBLIC_PLATFORM_SERVICE_URL=
+        - NEXT_PUBLIC_APP_VERSION=${APP_VERSION:-0.0.0-dev}
     ports:
       - "3001:3000"
     depends_on:

@@ -8,6 +8,9 @@
 # Stage 1: Build
 FROM eclipse-temurin:21-jdk AS builder
 
+ARG TAKTX_APP_VERSION=0.0.0-dev
+ENV TAKTX_APP_VERSION=$TAKTX_APP_VERSION
+
 WORKDIR /build
 
 # Copy Gradle wrapper and build files
@@ -26,6 +29,8 @@ RUN ./gradlew :platform-service:build -x test --no-daemon
 # Stage 2: Runtime
 FROM bellsoft/liberica-openjre-alpine:21
 
+ARG TAKTX_APP_VERSION=0.0.0-dev
+
 WORKDIR /app
 
 # Install wget for healthchecks and create non-root user (Alpine syntax)
@@ -41,6 +46,7 @@ RUN chown -R taktx:taktx /app
 USER taktx
 
 ENV HOME=/home/taktx
+ENV TAKTX_APP_VERSION=$TAKTX_APP_VERSION
 
 EXPOSE 8080
 

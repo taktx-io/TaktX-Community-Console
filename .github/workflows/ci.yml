@@ -115,17 +115,19 @@ jobs:
           - image_name: taktx-community-platform-service
             context: ./backend
             file: ./backend/platform-service/Dockerfile
-            build_args: ""
+            build_args: |
+              TAKTX_APP_VERSION=0.0.0-ci
           - image_name: taktx-community-ingester-inmemory
             context: ./backend
             file: ./backend/ingesters/inmemory/Dockerfile
-            build_args: ""
+            build_args: |
+              TAKTX_APP_VERSION=0.0.0-ci
           - image_name: taktx-community-console-frontend
             context: ./frontend
             file: ./frontend/Dockerfile
             build_args: |
               NEXT_PUBLIC_PLATFORM_SERVICE_URL=
-              NEXT_PUBLIC_APP_VERSION=ci
+              NEXT_PUBLIC_APP_VERSION=0.0.0-ci
 
     steps:
       - name: Check out repository

@@ -9,7 +9,6 @@ subprojects {
     }
 
     group = "io.taktx.console.ingesters"
-    version = "0.1.0-SNAPSHOT"
 
 
     tasks.withType(JavaCompile::class.java).configureEach {

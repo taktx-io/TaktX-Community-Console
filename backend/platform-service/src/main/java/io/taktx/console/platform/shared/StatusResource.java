@@ -8,15 +8,21 @@
 
 package io.taktx.console.platform.shared;
 
+import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @Path("/api/status")
 public class StatusResource {
+
+  @Inject
+  @ConfigProperty(name = "quarkus.application.version", defaultValue = "0.0.0-dev")
+  String version;
 
   @GET
   @Produces(MediaType.APPLICATION_JSON)
@@ -25,7 +31,7 @@ public class StatusResource {
             Map.of(
                 "service", "taktx-platform-service",
                 "status", "running",
-                "version", "0.1.0-SNAPSHOT"))
+                "version", version))
         .build();
   }
 }

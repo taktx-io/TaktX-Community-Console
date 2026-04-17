@@ -296,20 +296,31 @@ docker compose --profile console up -d --build
 The repository contains two GitHub Actions workflows for container automation:
 
 - [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on pushes and pull requests. It validates the backend and frontend, then builds all three Docker images as a CI check without pushing them.
-- [`.github/workflows/release.yml`](../.github/workflows/release.yml) runs when a GitHub Release is **published** and pushes the three images to GHCR.
+- [`.github/workflows/release.yml`](../.github/workflows/release.yml) runs when a release tag is pushed and is the **only** supported path for publishing the three images to GHCR and creating the GitHub Release.
 
-The release workflow accepts both `v1.2.3` and `1.2.3` style tags. It normalizes the version and publishes:
+The release workflow accepts both `v1.2.3` and `1.2.3` style tags. It normalizes the version, builds the frontend, platform service, and ingester from that exact same version, publishes:
 
 - `ghcr.io/<repository-owner>/taktx-community-platform-service:<version>`
-- `ghcr.io/<repository-owner>/taktx-community-platform-service:latest`
 - `ghcr.io/<repository-owner>/taktx-community-ingester-inmemory:<version>`
-- `ghcr.io/<repository-owner>/taktx-community-ingester-inmemory:latest`
 - `ghcr.io/<repository-owner>/taktx-community-console-frontend:<version>`
+
+It also publishes immutable traceability tags of the form `sha-<shortsha>` for each image.
+
+For stable tags (for example `v1.2.3`), the workflow also updates:
+
+- `ghcr.io/<repository-owner>/taktx-community-platform-service:latest`
+- `ghcr.io/<repository-owner>/taktx-community-ingester-inmemory:latest`
 - `ghcr.io/<repository-owner>/taktx-community-console-frontend:latest`
+
+For prerelease tags (for example `v1.2.3-beta.1`), the workflow publishes only the explicit version tag and does **not** move `latest`.
 
 Only Docker images are published by the release automation. No JAR files or Maven artifacts are uploaded.
 
-## Building Images Manually
+## Building Images Locally (development only)
+
+These commands are for local development and validation only. They do **not** publish
+images and are **not** a supported release path. Production image publication happens
+only through [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 
 ### Platform Service
 
@@ -452,13 +463,13 @@ In local dev mode, ensure `NEXT_PUBLIC_PLATFORM_SERVICE_URL=http://localhost:808
 
 ## Image Publishing
 
-The compose file defaults to pulling images from GitHub Container Registry under:
+The compose file defaults to pulling the latest stable images from GitHub Container Registry under:
 
 - `ghcr.io/taktx-io/taktx-community-platform-service`
 - `ghcr.io/taktx-io/taktx-community-ingester-inmemory`
 - `ghcr.io/taktx-io/taktx-community-console-frontend`
 
-If you build locally, `docker compose ... --build` uses the checked-out source tree instead.
+Set `IMAGE_TAG=<release-version>` when you want to pin Compose to a specific GitHub release. If you build locally, `docker compose ... --build` uses the checked-out source tree instead and defaults the shared app version to `0.0.0-dev` unless you override `APP_VERSION`.
 
 ## Security Considerations
 

@@ -31,7 +31,7 @@ COPY taktx-console/ ./
 ARG NEXT_PUBLIC_PLATFORM_SERVICE_URL=
 ENV NEXT_PUBLIC_PLATFORM_SERVICE_URL=$NEXT_PUBLIC_PLATFORM_SERVICE_URL
 
-ARG NEXT_PUBLIC_APP_VERSION=dev
+ARG NEXT_PUBLIC_APP_VERSION=0.0.0-dev
 ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -44,10 +44,13 @@ RUN --mount=type=cache,target=/app/.next/cache \
 # ── Stage 3: runtime image ────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
+ARG NEXT_PUBLIC_APP_VERSION=0.0.0-dev
+
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_APP_VERSION=$NEXT_PUBLIC_APP_VERSION
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
