@@ -27,7 +27,7 @@ RUN chmod +x ./gradlew
 RUN ./gradlew :platform-service:build -x test --no-daemon
 
 # Stage 2: Runtime
-FROM bellsoft/liberica-openjre-alpine:21
+FROM bellsoft/liberica-openjre-alpine:21.0.10
 
 ARG TAKTX_APP_VERSION=0.0.0-dev
 
