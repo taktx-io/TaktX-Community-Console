@@ -1,6 +1,6 @@
 [versions]
 quarkus = "3.28.4"
-junit = "5.10.1"
+junit = "5.14.4"
 assertj = "3.27.7"
 slf4j = "2.0.17"
 mockito = "3.12.4"
