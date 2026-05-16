@@ -11,7 +11,7 @@ cassandra = "1.21.4"
 cassandraQuarkusMapper = "1.3.0"
 jjwt = "0.13.0"
 license3j = "3.3.0"
-tyrus = "2.1.5"
+tyrus = "2.2.2"
 wiremock = "3.13.2"
 
 [libraries]
