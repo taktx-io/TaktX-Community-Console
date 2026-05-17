@@ -31,11 +31,21 @@ export interface ProcessInstanceRow {
   endTime: string | null;
   state: string | null;
   parentProcessInstanceId?: string | null;
+  /** Immutable after process start. Null if not provided. */
+  businessKey?: string | null;
+  /** Immutable after process start. Empty array if not provided. */
+  tags?: string[] | null;
 }
 
 export interface ProcessInstancePage {
   items: ProcessInstanceRow[];
   total: number;
+}
+
+export interface StartProcessInstanceRequest {
+  variables: Record<string, any>;
+  businessKey?: string | null;
+  tags?: string[];
 }
 
 /**
@@ -176,6 +186,14 @@ export async function getProcessInstancesPageWithFilters(
     q.set('endTimeTo', filters.endTimeTo.toISOString());
   }
 
+  if (filters.businessKey) {
+    q.set('businessKey', filters.businessKey);
+  }
+
+  if (filters.tag) {
+    q.set('tag', filters.tag);
+  }
+
   // Add pagination and sorting parameters
   if (params?.start != null) q.set('start', String(params.start));
   if (params?.limit != null) q.set('limit', String(params.limit));
@@ -223,7 +241,7 @@ export async function getDmnDefinitionXml(dmnDefinitionId: string): Promise<stri
 /**
  * Start process instance(s) for a specific version of a process definition
  * POST /api/runway/processdefinitions/{id}/version/{version}/start
- * Accepts an array of variables objects (one per instance to start)
+ * Accepts an array of per-instance start requests.
  *
  * Routes through Platform Service BFF.
  * Platform Service proxies the start command to the backend runtime.
@@ -231,7 +249,7 @@ export async function getDmnDefinitionXml(dmnDefinitionId: string): Promise<stri
 export async function startProcessInstanceVersion(
   processDefinitionId: string,
   version: number,
-  variablesArray: Record<string, any>[]
+  startRequests: StartProcessInstanceRequest[]
 ): Promise<string[]> {
   const url = `${PLATFORM_SERVICE_URL}/api/runway/processdefinitions/${processDefinitionId}/version/${version}/start`;
 
@@ -240,7 +258,7 @@ export async function startProcessInstanceVersion(
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(variablesArray),
+    body: JSON.stringify(startRequests),
     credentials: 'include', // Send cookies (session)
   });
 

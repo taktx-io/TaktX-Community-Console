@@ -20,6 +20,10 @@ export interface ProcessInstance {
   state: string;
   parentProcessInstanceId?: string | null;
   incidentInfo?: any;
+  /** Immutable after process start. Null if not provided by the engine. */
+  businessKey?: string | null;
+  /** Immutable after process start. Null/empty if not provided by the engine. */
+  tags?: string[] | null;
 }
 
 export interface CommandTrustMetadata {

@@ -82,9 +82,23 @@ public class InstanceUpdateRegistry {
                 key,
                 processInstanceUpdateDTO.getScope().getState(),
                 processInstanceUpdateDTO.getProcessStartTime(),
-                processInstanceUpdateDTO.getProcessEndTime());
+                processInstanceUpdateDTO.getProcessEndTime(),
+                processInstanceUpdateDTO.getBusinessKey(),
+                processInstanceUpdateDTO.getTags());
         if (processInstanceUpdateDTO.getParentProcessInstanceId() != null) {
           updated.setParentProcessInstanceId(processInstanceUpdateDTO.getParentProcessInstanceId());
+        }
+      } else {
+        // Write-once guard: businessKey and tags are immutable after process start.
+        // Only set them if the existing view doesn't have them yet (handles the edge case
+        // where a start-event arrives after a flow-node event that pre-created the view).
+        if (updated.getBusinessKey() == null && processInstanceUpdateDTO.getBusinessKey() != null) {
+          updated.setBusinessKey(processInstanceUpdateDTO.getBusinessKey());
+        }
+        if ((updated.getTags() == null || updated.getTags().isEmpty())
+            && processInstanceUpdateDTO.getTags() != null
+            && !processInstanceUpdateDTO.getTags().isEmpty()) {
+          updated.setTags(processInstanceUpdateDTO.getTags());
         }
       }
       if (processInstanceUpdateDTO.getScope() != null

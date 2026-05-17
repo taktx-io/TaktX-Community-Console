@@ -75,6 +75,8 @@ function RunwayPageContent() {
   const [startTimeTo, setStartTimeTo] = useState<Date | null>(null);
   const [endTimeFrom, setEndTimeFrom] = useState<Date | null>(null);
   const [endTimeTo, setEndTimeTo] = useState<Date | null>(null);
+  const [businessKey, setBusinessKey] = useState<string>('');
+  const [tag, setTag] = useState<string>('');
   const [bpmnXml, setBpmnXml] = useState<string | null>(null);
   const [dmnXml, setDmnXml] = useState<string | null>(null);
   const [dmnLoading, setDmnLoading] = useState(false);
@@ -445,8 +447,10 @@ function RunwayPageContent() {
       startTimeTo: startTimeTo,
       endTimeFrom: endTimeFrom,
       endTimeTo: endTimeTo,
+      businessKey: businessKey || null,
+      tag: tag || null,
     };
-  }, [filterMode, instanceSelectionMode, manualInstanceIds, selectedBookmark, selectedDefinitionId, selectedVersion, selectedStates, batchInstanceIds, startTimeFrom, startTimeTo, endTimeFrom, endTimeTo]);
+  }, [filterMode, instanceSelectionMode, manualInstanceIds, selectedBookmark, selectedDefinitionId, selectedVersion, selectedStates, batchInstanceIds, startTimeFrom, startTimeTo, endTimeFrom, endTimeTo, businessKey, tag]);
 
   // Overlay settings - start with defaults to avoid hydration mismatch, load from localStorage after mount
   const [overlaySettings, setOverlaySettings] = useState<OverlaySettingsState>(DEFAULT_OVERLAY_SETTINGS);
@@ -1149,6 +1153,10 @@ function RunwayPageContent() {
                       endTimeFrom={endTimeFrom}
                       endTimeTo={endTimeTo}
                       onEndTimeRangeChange={handleEndTimeRangeChange}
+                      businessKey={businessKey}
+                      onBusinessKeyChange={setBusinessKey}
+                      tag={tag}
+                      onTagChange={setTag}
                   />
                 </Card>
               </div>

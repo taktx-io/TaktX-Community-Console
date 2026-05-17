@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import { App, Button, Tooltip, Checkbox, Modal, Input } from 'antd';
+import { App, Button, Tooltip, Checkbox, Modal, Input, Tag } from 'antd';
 import {
   ReloadOutlined,
   SyncOutlined,
@@ -11,6 +11,7 @@ import {
   LinkOutlined,
   SaveOutlined,
   StopOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import type { ProcessInstanceRow as ProcessInstanceRowType, ProcessDefinitionVersionInfo } from '@/lib/api/runwayApi';
 import { getProcessInstancesPageWithFilters } from '@/lib/api/runwayApi';
@@ -74,6 +75,8 @@ const ProcessInstanceRow = React.memo(({
   showParentColumn,
   showProcessDefColumn,
   showVersionColumn,
+  showBusinessKeyColumn,
+  showTagsColumn,
   overlaySettings,
   versions,
   isInstanceViewMode,
@@ -89,6 +92,8 @@ const ProcessInstanceRow = React.memo(({
   showParentColumn: boolean;
   showProcessDefColumn: boolean;
   showVersionColumn: boolean;
+  showBusinessKeyColumn: boolean;
+  showTagsColumn: boolean;
   overlaySettings?: OverlaySettingsState;
   versions: ProcessDefinitionVersionInfo[];
   isInstanceViewMode: boolean;
@@ -254,6 +259,45 @@ const ProcessInstanceRow = React.memo(({
           })()}
         </td>
       )}
+      {/* Business Key column */}
+      {showBusinessKeyColumn && (
+        <td style={{
+          padding: '8px 8px',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          maxWidth: 160,
+        }}>
+          {row.businessKey ? (
+            <Tooltip title={row.businessKey}>
+              <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{row.businessKey}</span>
+            </Tooltip>
+          ) : (
+            <span style={{ color: '#999', fontSize: 12 }}>—</span>
+          )}
+        </td>
+      )}
+      {/* Tags column */}
+      {showTagsColumn && (
+        <td style={{ padding: '8px 8px', overflow: 'hidden' }}>
+          {row.tags && row.tags.length > 0 ? (
+            <span style={{ display: 'flex', flexWrap: 'nowrap', gap: 2, overflow: 'hidden' }}>
+              {row.tags.slice(0, 3).map((t) => (
+                <Tag key={t} style={{ margin: 0, fontSize: 11, lineHeight: '18px', padding: '0 5px' }}>{t}</Tag>
+              ))}
+              {row.tags.length > 3 && (
+                <Tooltip title={row.tags.slice(3).join(', ')}>
+                  <Tag style={{ margin: 0, fontSize: 11, lineHeight: '18px', padding: '0 5px', cursor: 'help' }}>
+                    +{row.tags.length - 3}
+                  </Tag>
+                </Tooltip>
+              )}
+            </span>
+          ) : (
+            <span style={{ color: '#999', fontSize: 12 }}>—</span>
+          )}
+        </td>
+      )}
       <td style={{ padding: '8px 8px' }}>
         {row.startTime ? new Date(row.startTime).toLocaleString(undefined, {
           year: 'numeric',
@@ -306,6 +350,8 @@ const ProcessInstanceRow = React.memo(({
     prevProps.showParentColumn === nextProps.showParentColumn &&
     prevProps.showProcessDefColumn === nextProps.showProcessDefColumn &&
     prevProps.showVersionColumn === nextProps.showVersionColumn &&
+    prevProps.showBusinessKeyColumn === nextProps.showBusinessKeyColumn &&
+    prevProps.showTagsColumn === nextProps.showTagsColumn &&
     prevProps.overlaySettings === nextProps.overlaySettings &&
     prevProps.versions === nextProps.versions &&
     prevProps.onCancelInstance === nextProps.onCancelInstance &&
@@ -941,6 +987,10 @@ export default function ProcessInstanceTable({
   const showProcessDefColumn = !filters.processDefinitionId; // Show if not filtering by specific definition
   const showVersionColumn = !filters.version; // Show if not filtering by specific version
 
+  // Optional columns controlled by user toggle
+  const [showBusinessKeyColumn, setShowBusinessKeyColumn] = useState(false);
+  const [showTagsColumn, setShowTagsColumn] = useState(false);
+
   // Memoize whether to show parent instance column (expensive check)
   // Memoize whether to show parent instance column (expensive check)
   const showParentColumn = useMemo(() => rows.some(r => r.parentProcessInstanceId), [rows]);
@@ -1009,6 +1059,27 @@ export default function ProcessInstanceTable({
             onClick={handleRefresh}
             style={{ padding: '0 4px', height: 20, flexShrink: 0 }}
           />
+          {/* Column visibility toggle */}
+          <Tooltip title={
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>Optional Columns</div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: 2 }}>
+                <input type="checkbox" checked={showBusinessKeyColumn} onChange={(e) => setShowBusinessKeyColumn(e.target.checked)} />
+                Business Key
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <input type="checkbox" checked={showTagsColumn} onChange={(e) => setShowTagsColumn(e.target.checked)} />
+                Tags
+              </label>
+            </div>
+          } trigger="click" placement="bottomLeft">
+            <Button
+              type="text"
+              size="small"
+              icon={<SettingOutlined />}
+              style={{ padding: '0 4px', height: 20, flexShrink: 0, color: (showBusinessKeyColumn || showTagsColumn) ? '#1890ff' : undefined }}
+            />
+          </Tooltip>
           {selectedInstanceIds.size > 0 && (
             <>
               <Tooltip title={`Save ${selectedInstanceIds.size} selected to bookmark`}>
@@ -1236,6 +1307,36 @@ export default function ProcessInstanceTable({
                   {/* Empty header - version indicated by tooltip */}
                 </th>
               )}
+              {showBusinessKeyColumn && (
+                <th
+                  style={{
+                    width: 160,
+                    textAlign: 'left',
+                    padding: '8px 8px',
+                    borderBottom: '1px solid #f0f0f0',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Business Key
+                </th>
+              )}
+              {showTagsColumn && (
+                <th
+                  style={{
+                    width: 140,
+                    textAlign: 'left',
+                    padding: '8px 8px',
+                    borderBottom: '1px solid #f0f0f0',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Tags
+                </th>
+              )}
               <th
                 style={{
                   width: 160,
@@ -1311,6 +1412,8 @@ export default function ProcessInstanceTable({
                 showParentColumn={showParentColumn}
                 showProcessDefColumn={showProcessDefColumn}
                 showVersionColumn={showVersionColumn}
+                showBusinessKeyColumn={showBusinessKeyColumn}
+                showTagsColumn={showTagsColumn}
                 overlaySettings={overlaySettings}
                 versions={versions}
                 isInstanceViewMode={!!selectedInstanceId}
@@ -1321,7 +1424,7 @@ export default function ProcessInstanceTable({
             {rows.length === 0 && !loading && (
               <tr>
                 <td
-                  colSpan={6 + (showProcessDefColumn ? 1 : 0) + (showVersionColumn ? 1 : 0) + (showParentColumn ? 1 : 0)}
+                  colSpan={6 + (showProcessDefColumn ? 1 : 0) + (showVersionColumn ? 1 : 0) + (showParentColumn ? 1 : 0) + (showBusinessKeyColumn ? 1 : 0) + (showTagsColumn ? 1 : 0)}
                   style={{ padding: 8, textAlign: 'center', color: '#999' }}
                 >
                   No process instances

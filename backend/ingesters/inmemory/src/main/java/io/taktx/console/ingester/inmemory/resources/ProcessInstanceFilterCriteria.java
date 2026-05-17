@@ -50,6 +50,13 @@ public class ProcessInstanceFilterCriteria {
   @Size(max = 256, message = "Business key cannot exceed 256 characters")
   private String businessKey;
 
+  /**
+   * Filter by a single tag (optional, exact match). Premium supports multi-tag; community supports
+   * one tag at a time.
+   */
+  @Size(max = 256, message = "Tag cannot exceed 256 characters")
+  private String tag;
+
   /** Filter instances that have incidents (optional) */
   private Boolean hasIncident;
 
@@ -83,7 +90,6 @@ public class ProcessInstanceFilterCriteria {
   // Future filter fields can be added here:
   // private String variableName;
   // private String variableValue;
-  // private List<String> tags;
 
   /** Check if any filters are applied. */
   public boolean hasFilters() {
@@ -91,6 +97,7 @@ public class ProcessInstanceFilterCriteria {
         || version != null
         || (states != null && !states.isEmpty())
         || businessKey != null
+        || tag != null
         || hasIncident != null
         || (processInstanceIds != null && !processInstanceIds.isEmpty())
         || startTimeFrom != null

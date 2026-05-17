@@ -32,10 +32,10 @@ export interface ProcessInstanceFilters {
   endTimeFrom?: Date | null;
   /** Filter by end time range - to date (exclusive, optional) */
   endTimeTo?: Date | null;
-  // Future filter types can be added here:
-  // variableName?: string;
-  // variableValue?: string;
-  // businessKey?: string;
+  /** Filter by exact business key (community: exact match only, no wildcard) */
+  businessKey?: string | null;
+  /** Filter by a single tag (community: exact match, one tag at a time) */
+  tag?: string | null;
 }
 
 /**
@@ -47,7 +47,9 @@ export function areFiltersEmpty(filters: ProcessInstanceFilters): boolean {
     && !filters.startTimeFrom
     && !filters.startTimeTo
     && !filters.endTimeFrom
-    && !filters.endTimeTo;
+    && !filters.endTimeTo
+    && !filters.businessKey
+    && !filters.tag;
 }
 
 /**
@@ -88,6 +90,14 @@ export function filtersToQueryParams(filters: ProcessInstanceFilters): URLSearch
 
   if (filters.startTimeTo) {
     params.set('startTimeTo', filters.startTimeTo.toISOString());
+  }
+
+  if (filters.businessKey) {
+    params.set('businessKey', filters.businessKey);
+  }
+
+  if (filters.tag) {
+    params.set('tag', filters.tag);
   }
 
   return params;

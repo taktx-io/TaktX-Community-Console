@@ -6,7 +6,7 @@ import { CloseOutlined, UpOutlined, CodeOutlined, DownloadOutlined, ReloadOutlin
 import type { ColumnsType } from 'antd/es/table';
 import { BpmnIcon, CallActivityIcon } from './BpmnIcons';
 import HorizontalSplit from '@/components/layout/HorizontalSplit';
-import { getFlowNodeInstances, getProcessVariables, TimedFlowNodeInstance } from '@/lib/api/processInstanceApi';
+import { getFlowNodeInstances, getProcessVariables, getProcessInstance, TimedFlowNodeInstance } from '@/lib/api/processInstanceApi';
 import type { OverlaySettingsState } from './OverlaySettings';
 import { getStateColor } from '@/lib/utils/stateColors';
 import { findInstanceByKey } from '@/lib/utils/flowNodeInstanceUtils';
@@ -79,6 +79,8 @@ export default function ProcessInstanceDetail({
   const [allVariables, setAllVariables] = useState<Record<string, any>>({ process: {} });
   const [variablesLoading, setVariablesLoading] = useState(false);
   const [activeInspectorTab, setActiveInspectorTab] = useState<'activity' | 'variables'>('variables');
+  const [instanceBusinessKey, setInstanceBusinessKey] = useState<string | null>(null);
+  const [instanceTags, setInstanceTags] = useState<string[] | null>(null);
 
   // Keep refs to callback and message so effects only re-run on real data changes
   const messageRef = useRef(message);
@@ -170,6 +172,22 @@ export default function ProcessInstanceDetail({
 
     fetchVariables();
   }, [instanceId]); // message excluded via ref to avoid extra fetches
+
+  // Fetch businessKey and tags (immutable metadata, fetched once per instanceId)
+  useEffect(() => {
+    if (!instanceId) return;
+    let cancelled = false;
+    getProcessInstance(instanceId)
+      .then((inst) => {
+        if (cancelled) return;
+        setInstanceBusinessKey(inst.businessKey ?? null);
+        setInstanceTags(inst.tags && inst.tags.length > 0 ? inst.tags : null);
+      })
+      .catch((err) => {
+        console.warn('[ProcessInstanceDetail] Failed to fetch instance metadata:', err);
+      });
+    return () => { cancelled = true; };
+  }, [instanceId]);
 
   // Track container height for virtual scrolling
   useEffect(() => {
@@ -772,6 +790,45 @@ export default function ProcessInstanceDetail({
           >
             {parentProcessInstanceId}
           </Button>
+        </div>
+      )}
+
+      {/* Business Key / Tags Metadata */}
+      {(instanceBusinessKey || (instanceTags && instanceTags.length > 0)) && (
+        <div style={{
+          padding: '6px 12px',
+          background: '#fafafa',
+          borderBottom: '1px solid #f0f0f0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          flexShrink: 0,
+          flexWrap: 'wrap',
+        }}>
+          {instanceBusinessKey && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              <span style={{ color: '#8c8c8c', fontWeight: 500 }}>Business Key:</span>
+              <Tooltip title="Click to copy business key">
+                <span
+                  style={{ fontFamily: 'monospace', color: '#262626', cursor: 'pointer' }}
+                  onClick={() => {
+                    navigator.clipboard.writeText(instanceBusinessKey);
+                    message.success('Business key copied');
+                  }}
+                >
+                  {instanceBusinessKey}
+                </span>
+              </Tooltip>
+            </span>
+          )}
+          {instanceTags && instanceTags.length > 0 && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+              <span style={{ color: '#8c8c8c', fontWeight: 500 }}>Tags:</span>
+              {instanceTags.map((t) => (
+                <Tag key={t} style={{ margin: 0, fontSize: 11 }}>{t}</Tag>
+              ))}
+            </span>
+          )}
         </div>
       )}
 

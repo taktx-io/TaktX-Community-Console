@@ -83,6 +83,7 @@ public class InstanceResource {
       @QueryParam("businessKey")
           @Size(max = 256, message = "Business key cannot exceed 256 characters")
           String businessKey,
+      @QueryParam("tag") @Size(max = 256, message = "Tag cannot exceed 256 characters") String tag,
       @QueryParam("hasIncident") Boolean hasIncident,
       @QueryParam("processInstanceIds")
           @Size(max = 1000, message = "Cannot filter by more than 10000 instance IDs")
@@ -115,6 +116,7 @@ public class InstanceResource {
       criteria.setProcessDefinitionId(processDefinitionId);
       criteria.setVersion(version);
       criteria.setBusinessKey(businessKey);
+      criteria.setTag(tag);
       criteria.setHasIncident(hasIncident);
 
       // Set states if provided (JAX-RS automatically handles multiple query params)

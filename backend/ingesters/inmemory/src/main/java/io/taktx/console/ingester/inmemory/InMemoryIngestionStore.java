@@ -162,6 +162,18 @@ public class InMemoryIngestionStore implements IngestionStore {
       }
     }
 
+    // Business key: exact case-sensitive match (community: no wildcard, no prefix)
+    if (criteria.getBusinessKey() != null
+        && !criteria.getBusinessKey().equals(view.getBusinessKey())) {
+      return false;
+    }
+
+    // Tag: single exact match — instance must contain the tag in its tag set
+    if (criteria.getTag() != null
+        && (view.getTags() == null || !view.getTags().contains(criteria.getTag()))) {
+      return false;
+    }
+
     if (criteria.getStartTimeFrom() != null || criteria.getStartTimeTo() != null) {
       Instant startTime = view.getStartTime();
       if (startTime == null) {
@@ -234,7 +246,7 @@ public class InMemoryIngestionStore implements IngestionStore {
 
     return flowNodeMap.values().stream()
         .sorted(Comparator.comparing(TimedFlowNodeInstance::timestamp).reversed())
-        .collect(Collectors.toList());
+        .toList();
   }
 
   @Override

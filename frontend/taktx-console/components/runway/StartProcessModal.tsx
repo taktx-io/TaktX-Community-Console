@@ -9,7 +9,7 @@ import {
   DeleteOutlined,
   CheckCircleOutlined
 } from '@ant-design/icons';
-import type { ProcessDefinitionVersionInfo } from '@/lib/api/runwayApi';
+import type { ProcessDefinitionVersionInfo, StartProcessInstanceRequest } from '@/lib/api/runwayApi';
 import { batchExists } from '@/lib/utils/batchStorage';
 
 const { TextArea } = Input;
@@ -55,6 +55,8 @@ export default function StartProcessModal({
   const [selectedDefinitionId, setSelectedDefinitionId] = useState<string | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const [bookmarkName, setBookmarkName] = useState<string>('');
+  const [businessKeyTemplate, setBusinessKeyTemplate] = useState<string>('');
+  const [tagTemplates, setTagTemplates] = useState<string[]>([]);
 
   // Modal's own versions state (fetched when definition selected)
   const [versions, setVersions] = useState<ProcessDefinitionVersionInfo[]>(propVersions);
@@ -94,6 +96,8 @@ export default function StartProcessModal({
       setSelectedDefinitionId(prefillDefinitionId || null);
       setSelectedVersion(prefillVersion !== undefined ? prefillVersion : null);
       setBookmarkName('');
+      setBusinessKeyTemplate('');
+      setTagTemplates([]);
       setShowSuccess(false);
       // Only use prop versions initially if they exist and match the prefilled definition
       // Otherwise, the fetch effect will load them
@@ -325,6 +329,30 @@ export default function StartProcessModal({
     return 'blocked';
   }, [batchCount]);
 
+  const normalizedTagTemplates = useMemo(
+    () => Array.from(new Set(tagTemplates.map(tag => tag.trim()).filter(Boolean))),
+    [tagTemplates]
+  );
+
+  const metadataValidation = useMemo(() => {
+    const errors: string[] = [];
+
+    if (businessKeyTemplate.trim().length > 512) {
+      errors.push('Business key cannot exceed 512 characters.');
+    }
+
+    if (normalizedTagTemplates.length > 20) {
+      errors.push('You can provide at most 20 tags.');
+    }
+
+    const tooLongTag = normalizedTagTemplates.find(tag => tag.length > 64);
+    if (tooLongTag) {
+      errors.push(`Tag "${tooLongTag}" cannot exceed 64 characters.`);
+    }
+
+    return errors;
+  }, [businessKeyTemplate, normalizedTagTemplates]);
+
   // Validation: can submit?
   const canSubmit = useMemo(() => {
     if (!selectedDefinitionId) return false;
@@ -333,59 +361,96 @@ export default function StartProcessModal({
     if (!jsonValidation.valid) return false;
     if (undefinedVariables.length > 0) return false; // Block if using undefined variables
     if (variableValidation.length > 0) return false; // Block if variable definitions are invalid
+    if (metadataValidation.length > 0) return false;
 
     // Bookmark name is optional - will be auto-generated if not provided
 
     return true;
-  }, [selectedDefinitionId, loading, warningLevel, jsonValidation.valid, undefinedVariables, variableValidation]);
+  }, [selectedDefinitionId, loading, warningLevel, jsonValidation.valid, undefinedVariables, variableValidation, metadataValidation]);
 
-  // Generate preview of what will be sent to backend
-  const generatePreview = (): Record<string, any>[] => {
+  const buildVariableMap = (index: number): Record<string, any> => {
+    const varMap: Record<string, any> = {
+      index,
+      index1: index + 1,
+      timestamp: new Date().toISOString(),
+      uuid: crypto.randomUUID(),
+    };
+
+    for (const row of variables) {
+      if (!row.key.trim()) continue;
+
+      try {
+        const parsed = JSON.parse(row.value);
+        if (Array.isArray(parsed)) {
+          varMap[row.key] = index < parsed.length ? parsed[index] : null;
+        } else {
+          varMap[row.key] = parsed;
+        }
+      } catch {
+        varMap[row.key] = row.value;
+      }
+    }
+
+    return varMap;
+  };
+
+  const applyStringTemplate = (template: string, varMap: Record<string, any>): string | null => {
+    const trimmedTemplate = template.trim();
+    if (!trimmedTemplate) return null;
+
+    const replaced = applyVariableReplacements(trimmedTemplate, varMap);
+    const normalized = String(replaced ?? '').trim();
+    return normalized || null;
+  };
+
+  const buildStartRequests = (): StartProcessInstanceRequest[] => {
     if (!jsonValidation.valid) return [];
 
-    try {
-      const buildVariableMap = (index: number): Record<string, any> => {
-        const varMap: Record<string, any> = {
-          index,
-          index1: index + 1,
-          timestamp: new Date().toISOString(),
-          uuid: crypto.randomUUID(),
-        };
+    const requests: StartProcessInstanceRequest[] = [];
 
-        for (const row of variables) {
-          if (!row.key.trim()) continue;
-          try {
-            const parsed = JSON.parse(row.value);
-            if (Array.isArray(parsed)) {
-              varMap[row.key] = index < parsed.length ? parsed[index] : null;
-            } else {
-              varMap[row.key] = parsed;
-            }
-          } catch {
-            varMap[row.key] = row.value;
-          }
-        }
-        return varMap;
-      };
+    const pushRequest = (variablesPayload: Record<string, any>, varMap: Record<string, any>) => {
+      const request: StartProcessInstanceRequest = { variables: variablesPayload };
 
-      const previewArray: Record<string, any>[] = [];
-      const previewCount = Math.min(batchCount, 5); // Preview max 5 instances
-
-      if (jsonValidation.isArray) {
-        for (let i = 0; i < previewCount; i++) {
-          const varMap = buildVariableMap(i);
-          const replaced = applyVariableReplacements(jsonValidation.parsed[i], varMap);
-          previewArray.push(replaced);
-        }
-      } else {
-        for (let i = 0; i < previewCount; i++) {
-          const varMap = buildVariableMap(i);
-          const replaced = applyVariableReplacements(jsonValidation.parsed, varMap);
-          previewArray.push(replaced);
-        }
+      const businessKey = applyStringTemplate(businessKeyTemplate, varMap);
+      if (businessKey) {
+        request.businessKey = businessKey;
       }
 
-      return previewArray;
+      const tags = Array.from(
+        new Set(
+          normalizedTagTemplates
+            .map(tag => applyStringTemplate(tag, varMap))
+            .filter((tag): tag is string => Boolean(tag))
+        )
+      );
+      if (tags.length > 0) {
+        request.tags = tags;
+      }
+
+      requests.push(request);
+    };
+
+    if (jsonValidation.isArray) {
+      for (let i = 0; i < jsonValidation.parsed.length; i++) {
+        const varMap = buildVariableMap(i);
+        const replaced = applyVariableReplacements(jsonValidation.parsed[i], varMap);
+        pushRequest(replaced, varMap);
+      }
+    } else {
+      for (let i = 0; i < batchCount; i++) {
+        const varMap = buildVariableMap(i);
+        const replaced = applyVariableReplacements(jsonValidation.parsed, varMap);
+        pushRequest(replaced, varMap);
+      }
+    }
+
+    return requests;
+  };
+
+  // Generate preview of what will be sent to backend
+  const generatePreview = (): StartProcessInstanceRequest[] => {
+    try {
+      return buildStartRequests().slice(0, 5);
     } catch (error) {
       console.error('Preview generation error:', error);
       return [];
@@ -412,55 +477,7 @@ export default function StartProcessModal({
     setLoading(true);
 
     try {
-      // Build variable map for each iteration (user-defined variables)
-      const buildVariableMap = (index: number): Record<string, any> => {
-        const varMap: Record<string, any> = {
-          index,
-          index1: index + 1,
-          timestamp: new Date().toISOString(),
-          uuid: crypto.randomUUID(),
-        };
-
-        // Add user-defined variables
-        for (const row of variables) {
-          if (!row.key.trim()) continue;
-
-          try {
-            const parsed = JSON.parse(row.value);
-            if (Array.isArray(parsed)) {
-              // Array: index into it (or null if out of bounds)
-              varMap[row.key] = index < parsed.length ? parsed[index] : null;
-            } else {
-              // Primitive: use as-is
-              varMap[row.key] = parsed;
-            }
-          } catch {
-            // Treat as string literal
-            varMap[row.key] = row.value;
-          }
-        }
-
-        return varMap;
-      };
-
-      // Build array of variable objects to start
-      const variablesArray: Record<string, any>[] = [];
-
-      if (jsonValidation.isArray) {
-        // Array mode: each element is one instance, apply variable replacements to each
-        for (let i = 0; i < jsonValidation.parsed.length; i++) {
-          const varMap = buildVariableMap(i);
-          const replaced = applyVariableReplacements(jsonValidation.parsed[i], varMap);
-          variablesArray.push(replaced);
-        }
-      } else {
-        // Object mode: repeat same object with variable replacements for each iteration
-        for (let i = 0; i < batchCount; i++) {
-          const varMap = buildVariableMap(i);
-          const replaced = applyVariableReplacements(jsonValidation.parsed, varMap);
-          variablesArray.push(replaced);
-        }
-      }
+      const startRequests = buildStartRequests();
 
       // Import the API functions
       const { startProcessInstanceVersion } = await import('@/lib/api/runwayApi');
@@ -475,7 +492,7 @@ export default function StartProcessModal({
         allInstanceIds = await startProcessInstanceVersion(
           selectedDefinitionId,
           versionToUse,
-          variablesArray
+          startRequests
         );
       } catch (error) {
         console.error('Failed to start instances:', error);
@@ -700,6 +717,43 @@ export default function StartProcessModal({
           </div>
         </div>
 
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+              Business Key <span style={{ fontWeight: 400, color: '#888' }}>(optional)</span>
+            </label>
+            <Input
+              data-testid="start-process-business-key-input"
+              placeholder="e.g. ORDER-{{index1}}"
+              value={businessKeyTemplate}
+              onChange={e => setBusinessKeyTemplate(e.target.value)}
+              maxLength={512}
+            />
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              Supports the same tokens as the variables template.
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+              Tags <span style={{ fontWeight: 400, color: '#888' }}>(optional)</span>
+            </label>
+            <Select
+              data-testid="start-process-tags-select"
+              mode="tags"
+              style={{ width: '100%' }}
+              placeholder="Add tags and press Enter"
+              value={tagTemplates}
+              onChange={values => setTagTemplates(values)}
+              tokenSeparators={[',']}
+              maxTagCount="responsive"
+            />
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              Up to 20 tags. Tokens are supported, for example <code>batch-{'{{'}index1{'}'}</code>.
+            </div>
+          </div>
+        </div>
+
         {/* Variable Definitions */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -863,6 +917,22 @@ export default function StartProcessModal({
               showIcon
             />
           )}
+
+          {metadataValidation.length > 0 && (
+            <Alert
+              type="error"
+              message="Invalid start metadata"
+              description={
+                <div>
+                  {metadataValidation.map((error, index) => (
+                    <div key={index}>• {error}</div>
+                  ))}
+                </div>
+              }
+              style={{ marginTop: 8 }}
+              showIcon
+            />
+          )}
         </div>
 
         {/* Batch Count and Warnings */}
@@ -879,7 +949,7 @@ export default function StartProcessModal({
           <Button
             data-testid="start-process-preview-button"
             onClick={() => setShowPreview(true)}
-            disabled={!jsonValidation.valid || undefinedVariables.length > 0 || variableValidation.length > 0}
+              disabled={!jsonValidation.valid || undefinedVariables.length > 0 || variableValidation.length > 0 || metadataValidation.length > 0}
           >
             Preview
           </Button>

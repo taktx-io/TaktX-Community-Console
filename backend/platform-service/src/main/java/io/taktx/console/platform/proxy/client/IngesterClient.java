@@ -15,6 +15,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.Data;
 
 /**
@@ -68,6 +69,8 @@ public interface IngesterClient {
       @QueryParam("startTimeTo") String startTimeTo,
       @QueryParam("endTimeFrom") String endTimeFrom,
       @QueryParam("endTimeTo") String endTimeTo,
+      @QueryParam("businessKey") String businessKey,
+      @QueryParam("tag") String tag,
       @QueryParam("start") Integer start,
       @QueryParam("limit") Integer limit,
       @QueryParam("orderBy") String orderBy,
@@ -113,9 +116,19 @@ public interface IngesterClient {
   @Data
   class StartRequest {
     private Map<String, JsonNode> variables;
+    private String businessKey;
+    private Set<String> tags;
+
+    public StartRequest() {}
 
     public StartRequest(Map<String, JsonNode> variables) {
       this.variables = variables;
+    }
+
+    public StartRequest(Map<String, JsonNode> variables, String businessKey, Set<String> tags) {
+      this.variables = variables;
+      this.businessKey = businessKey;
+      this.tags = tags;
     }
   }
 

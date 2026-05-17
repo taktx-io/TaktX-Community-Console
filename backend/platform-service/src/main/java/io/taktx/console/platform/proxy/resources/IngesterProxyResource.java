@@ -18,7 +18,6 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -159,22 +158,12 @@ public class IngesterProxyResource {
   public Response startProcess(
       @PathParam("id") String processDefinitionId,
       @PathParam("version") int version,
-      List<Map<String, JsonNode>> variables) {
+      List<IngesterClient.StartRequest> startRequests) {
 
     // Resolve -1 (latest) to a concrete permitted version
     int concreteVersion = version;
     if (version == -1) {
       log.debug("Resolved latest version for {} to v{}", processDefinitionId, concreteVersion);
-    }
-
-    // Generate a unique token per instance so every Kafka message carries a distinct auditId.
-    // A single shared token means all 50 Kafka messages have the same auditId, and the engine's
-    // NonceStore treats messages 2..N as replays and rejects them.
-    // We bundle each token with its variables as a list of StartRequest pairs and send them
-    // in a single HTTP call to the ingester.
-    List<IngesterClient.StartRequest> startRequests = new ArrayList<>();
-    for (Map<String, JsonNode> instanceVariables : variables) {
-      startRequests.add(new IngesterClient.StartRequest(instanceVariables));
     }
 
     IngesterClient client = createClient();
@@ -207,6 +196,8 @@ public class IngesterProxyResource {
       @QueryParam("startTimeTo") String startTimeTo,
       @QueryParam("endTimeFrom") String endTimeFrom,
       @QueryParam("endTimeTo") String endTimeTo,
+      @QueryParam("businessKey") String businessKey,
+      @QueryParam("tag") String tag,
       @QueryParam("start") Integer start,
       @QueryParam("limit") Integer limit,
       @QueryParam("orderBy") String orderBy,
@@ -223,6 +214,8 @@ public class IngesterProxyResource {
         startTimeTo,
         endTimeFrom,
         endTimeTo,
+        businessKey,
+        tag,
         start,
         limit,
         orderBy,
@@ -327,7 +320,6 @@ public class IngesterProxyResource {
     IngesterClient client = createClient();
 
     // Resolve the instance to get its processDefinitionId + version
-    ProcessInstanceInfo instanceInfo;
     try {
       Response instanceResponse;
       try {
@@ -342,9 +334,7 @@ public class IngesterProxyResource {
             .entity(Map.of("error", "Failed to resolve instance"))
             .build();
       }
-      instanceInfo =
-          objectMapper.readValue(
-              instanceResponse.readEntity(String.class), ProcessInstanceInfo.class);
+      objectMapper.readValue(instanceResponse.readEntity(String.class), ProcessInstanceInfo.class);
     } catch (Exception e) {
       log.error("Error resolving instance {} for CANCEL", instanceId, e);
       return Response.serverError().entity(Map.of("error", "Failed to resolve instance")).build();
@@ -372,15 +362,13 @@ public class IngesterProxyResource {
   public Response cancelByFilter(JsonNode requestBody) {
 
     // Extract definition + version from the filter in the request body
-    String filterDefId = null;
-    Integer filterVersion = null;
     try {
       JsonNode filter = requestBody.path("filter");
       if (filter.hasNonNull("processDefinitionId")) {
-        filterDefId = filter.get("processDefinitionId").asText(null);
+        filter.get("processDefinitionId").asText(null);
       }
       if (filter.hasNonNull("version")) {
-        filterVersion = filter.get("version").asInt();
+        filter.get("version").asInt();
       }
     } catch (Exception e) {
       log.warn("Failed to parse filter from cancel-by-filter body: {}", e.getMessage());

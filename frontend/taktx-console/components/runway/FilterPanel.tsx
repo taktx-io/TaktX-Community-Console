@@ -1,6 +1,6 @@
 'use client';
 
-import { Select, Space, Checkbox, Tabs } from 'antd';
+import { Select, Space, Checkbox, Tabs, Input } from 'antd';
 import {
   FilterOutlined,
   LeftOutlined,
@@ -8,7 +8,8 @@ import {
   SyncOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  CloseCircleFilled,
 } from '@ant-design/icons';
 import { EXECUTION_STATES } from '@/lib/types/filters';
 import type { OverlaySettingsState } from './OverlaySettings';
@@ -115,6 +116,11 @@ interface FilterPanelProps {
   endTimeFrom: Date | null;
   endTimeTo: Date | null;
   onEndTimeRangeChange: (from: Date | null, to: Date | null) => void;
+  // Business key / tag filters
+  businessKey: string;
+  onBusinessKeyChange: (value: string) => void;
+  tag: string;
+  onTagChange: (value: string) => void;
 }
 
 /**
@@ -150,6 +156,10 @@ export default function FilterPanel({
   endTimeFrom,
   endTimeTo,
   onEndTimeRangeChange,
+  businessKey,
+  onBusinessKeyChange,
+  tag,
+  onTagChange,
 }: Readonly<FilterPanelProps>) {
   const handleToggleCollapsed = () => {
     const newCollapsed = !collapsed;
@@ -509,8 +519,66 @@ export default function FilterPanel({
               />
             </div>
 
+            {/* Business Key Filter */}
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#262626',
+                }}
+              >
+                Business Key
+              </label>
+              <Input
+                placeholder="Exact match (e.g. ORDER-48192)"
+                value={businessKey}
+                onChange={(e) => onBusinessKeyChange(e.target.value)}
+                allowClear
+                suffix={businessKey ? (
+                  <CloseCircleFilled
+                    style={{ color: '#ccc', cursor: 'pointer', fontSize: 12 }}
+                    onClick={() => onBusinessKeyChange('')}
+                  />
+                ) : <span />}
+                style={{ fontSize: 13 }}
+                data-testid="filter-business-key"
+              />
+            </div>
+
+            {/* Tag Filter */}
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#262626',
+                }}
+              >
+                Tag
+              </label>
+              <Input
+                placeholder="Exact match (e.g. vip)"
+                value={tag}
+                onChange={(e) => onTagChange(e.target.value)}
+                allowClear
+                suffix={tag ? (
+                  <CloseCircleFilled
+                    style={{ color: '#ccc', cursor: 'pointer', fontSize: 12 }}
+                    onClick={() => onTagChange('')}
+                  />
+                ) : <span />}
+                style={{ fontSize: 13 }}
+                data-testid="filter-tag"
+              />
+            </div>
+
             {/* Info Text */}
-            {(selectedDefinitionId || selectedStates.length < Object.keys(EXECUTION_STATES).length || startTimeFrom || startTimeTo || endTimeFrom || endTimeTo) && (
+            {(selectedDefinitionId || selectedStates.length < Object.keys(EXECUTION_STATES).length || startTimeFrom || startTimeTo || endTimeFrom || endTimeTo || businessKey || tag) && (
               <div
                 style={{
                   padding: '10px 12px',
@@ -537,6 +605,8 @@ export default function FilterPanel({
                       onStatesChange(Object.values(EXECUTION_STATES));
                       onStartTimeRangeChange(null, null);
                       onEndTimeRangeChange(null, null);
+                      onBusinessKeyChange('');
+                      onTagChange('');
                     }}
                     style={{
                       border: 'none',
@@ -600,6 +670,8 @@ export default function FilterPanel({
                     }) : 'Now'}
                   </div>
                 )}
+                {businessKey && <div style={{ marginBottom: 3 }}>• Business Key: <strong>{businessKey}</strong></div>}
+                {tag && <div style={{ marginBottom: 3 }}>• Tag: <strong>{tag}</strong></div>}
               </div>
             )}
           </Space>

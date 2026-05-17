@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -186,7 +187,14 @@ public class DefinitionResource {
       for (StartRequest req : startRequests) {
         try {
           VariablesDTO variablesDTO = VariablesDTO.ofJsonMap(req.getVariables());
-          UUID instanceId = taktClient.startProcess(processDefinitionId, version, variablesDTO);
+          UUID instanceId =
+              taktClient.startProcess(
+                  processDefinitionId,
+                  version,
+                  variablesDTO,
+                  req.getBusinessKey(),
+                  req.getTags() != null ? req.getTags() : Set.of(),
+                  null);
           instanceIds.add(instanceId.toString());
         } catch (Exception e) {
           log.warn(
@@ -227,5 +235,11 @@ public class DefinitionResource {
   @Data
   public static class StartRequest {
     private Map<String, JsonNode> variables;
+
+    @Size(max = 512, message = "Business key cannot exceed 512 characters")
+    private String businessKey;
+
+    @Size(max = 20, message = "Cannot provide more than 20 tags")
+    private Set<@Size(max = 64, message = "Tag cannot exceed 64 characters") String> tags;
   }
 }
