@@ -529,21 +529,49 @@ export default function StartProcessModal({
     }
   };
 
+  const footerContent = (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Button
+        data-testid="start-process-preview-button"
+        onClick={() => setShowPreview(true)}
+        disabled={!jsonValidation.valid || undefinedVariables.length > 0 || variableValidation.length > 0 || metadataValidation.length > 0}
+      >
+        Preview
+      </Button>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button onClick={onClose} disabled={loading}>
+          Cancel
+        </Button>
+        <Button
+          data-testid="start-process-start-button"
+          type="primary"
+          icon={<PlayCircleOutlined />}
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+          loading={loading}
+        >
+          Start {batchCount === 1 ? 'Instance' : `${batchCount} Instances`}
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <Modal
       open={open}
       onCancel={loading ? undefined : onClose}
       title="Start Process Instances"
       width={820}
-      footer={null}
+      footer={footerContent}
       maskClosable={!loading}
       closable={!loading}
       styles={{
         body: {
-          maxHeight: '70vh',
+          maxHeight: 'calc(80vh - 130px)',
           overflowY: 'auto',
           paddingTop: 16,
           paddingRight: 24,
+          paddingBottom: 8,
         }
       }}
     >
@@ -944,31 +972,6 @@ export default function StartProcessModal({
           mismatchVars={jsonValidation.arrayVars}
         />
 
-        {/* Actions */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-          <Button
-            data-testid="start-process-preview-button"
-            onClick={() => setShowPreview(true)}
-              disabled={!jsonValidation.valid || undefinedVariables.length > 0 || variableValidation.length > 0 || metadataValidation.length > 0}
-          >
-            Preview
-          </Button>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button
-              data-testid="start-process-start-button"
-              type="primary"
-              icon={<PlayCircleOutlined />}
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-              loading={loading}
-            >
-              Start {batchCount === 1 ? 'Instance' : `${batchCount} Instances`}
-            </Button>
-          </div>
-        </div>
       </Space>
 
       {/* Preview Modal */}
