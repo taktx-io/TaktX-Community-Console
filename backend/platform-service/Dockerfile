@@ -6,7 +6,7 @@
 ####
 
 # Stage 1: Build
-FROM eclipse-temurin:21.0.10_7-jdk AS builder
+FROM eclipse-temurin:21.0.11_10-jdk AS builder
 
 ARG TAKTX_APP_VERSION=0.0.0-dev
 ENV TAKTX_APP_VERSION=$TAKTX_APP_VERSION
