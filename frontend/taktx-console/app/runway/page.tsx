@@ -197,7 +197,7 @@ function RunwayPageContent() {
   const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false);
 
   // Detail pane resize hook
-  const {detailWidthPx, onStartDrag, onHandleKeyDown} = useDetailPaneResize({
+  const {detailWidthPx, isDragging, onStartDrag, onHandleKeyDown} = useDetailPaneResize({
     containerRef: bottomCardRef,
     dependencies: [selectedDefinitionId, selectedVersion],
   });
@@ -1414,113 +1414,126 @@ function RunwayPageContent() {
                       }
                       bottom={({heightPx}) => (
                           <Card ref={bottomCardRef}
-                                style={{height: '100%', display: 'flex', flexDirection: 'column', position: 'relative'}}
+                                style={{height: '100%', display: 'flex', flexDirection: 'column'}}
                                 styles={{
                                   body: {
                                     height: '100%',
                                     padding: 8,
                                     flex: 1,
                                     display: 'flex',
-                                    flexDirection: 'column',
-                                    overflow: 'hidden'
+                                    flexDirection: 'row',
+                                    overflow: 'hidden',
+                                    gap: 0,
                                   }
                                 }}>
-                            {/* Always render the table - never unmount it */}
-                            <ProcessInstanceTable
-                                key={`${selectedDefinitionId || 'all'}-${selectedVersion ?? 'all'}-${tableRefreshToken}`}
-                                filters={filters}
-                                heightPx={heightPx}
-                                compact
-                                fullHeight
-                                onRowClick={handleInstanceClick}
-                                selectedInstanceId={selectedInstanceId ?? undefined}
-                                overlaySettings={overlaySettings}
-                                versions={versions}
-                                onRowsLoaded={handleRowsLoaded}
-                                onNavigateToInstance={navigateToInstance}
-                                onBookmarkSaved={() => setBookmarkRefreshTrigger(prev => prev + 1)}
-                                onJobCreated={() => {
-                                  setJobsPanelCollapsed(false);
-                                  setActiveJobsCount(getActiveJobCount());
+                            {/* Table wrapper — always visible, shrinks to make room for the detail panel */}
+                            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', height: '100%' }}>
+                              <ProcessInstanceTable
+                                  key={`${selectedDefinitionId || 'all'}-${selectedVersion ?? 'all'}-${tableRefreshToken}`}
+                                  filters={filters}
+                                  heightPx={heightPx}
+                                  compact
+                                  fullHeight
+                                  onRowClick={handleInstanceClick}
+                                  selectedInstanceId={selectedInstanceId ?? undefined}
+                                  overlaySettings={overlaySettings}
+                                  versions={versions}
+                                  onRowsLoaded={handleRowsLoaded}
+                                  onNavigateToInstance={navigateToInstance}
+                                  onBookmarkSaved={() => setBookmarkRefreshTrigger(prev => prev + 1)}
+                                  onJobCreated={() => {
+                                    setJobsPanelCollapsed(false);
+                                    setActiveJobsCount(getActiveJobCount());
+                                  }}
+                              />
+                            </div>
+
+                            {/* Outer shell — always in DOM so CSS width transition fires on both open and close */}
+                            <div
+                                style={{
+                                  width: (selectedInstanceId && !isClosing)
+                                    ? (detailWidthPx !== null ? `${detailWidthPx}px` : '65%')
+                                    : 0,
+                                  flexShrink: 0,
+                                  overflow: 'hidden',
+                                  transition: isDragging ? 'none' : 'width 0.3s ease',
+                                  position: 'relative',
+                                  height: '100%',
                                 }}
-                            />
+                            >
+                              {selectedInstanceId && (
+                                  <>
+                                    {/* Scoped keyframes for slide in/out of inner content */}
+                                    <style>{`
+                                      @keyframes slideInRight {
+                                        from { transform: translateX(100%); opacity: 0; }
+                                        to   { transform: translateX(0);    opacity: 1; }
+                                      }
+                                      @keyframes slideOutRight {
+                                        from { transform: translateX(0);    opacity: 1; }
+                                        to   { transform: translateX(100%); opacity: 0; }
+                                      }
+                                    `}</style>
 
-                            {/* Detail panel overlays on the right with slide animation */}
-                            {selectedInstanceId && (
-                                <div
-                                    style={{
-                                      position: 'absolute',
-                                      top: 0,
-                                      right: 0,
-                                      bottom: 0,
-                                      background: 'white',
-                                      borderLeft: '1px solid #d9d9d9',
-                                      boxShadow: '-4px 0 12px rgba(0, 0, 0, 0.08)',
-                                      zIndex: 10,
-                                      animation: isClosing
-                                          ? 'slideOutRight 0.3s ease-in forwards'
-                                          : 'slideInRight 0.3s ease-out forwards',
-                                      willChange: 'transform, opacity',
-                                      overflow: 'hidden',
-                                      minWidth: 260,
-                                      width: detailWidthPx !== null ? `${detailWidthPx}px` : '75%',
-                                    }}
-                                    onKeyDown={onHandleKeyDown}
-                                    role="region"
-                                    aria-label="Process instance detail panel"
-                                    tabIndex={-1}
-                                >
-                                  {/* Scoped keyframes for slide in/out animations */}
-                                  <style>{`
-                          @keyframes slideInRight {
-                            from { transform: translateX(100%); opacity: 0; }
-                            to { transform: translateX(0); opacity: 1; }
-                          }
-                          @keyframes slideOutRight {
-                            from { transform: translateX(0); opacity: 1; }
-                            to { transform: translateX(100%); opacity: 0; }
-                          }
-                        `}</style>
-
-                                  {/* Resize handle positioned at left edge of panel */}
-                                  <div
-                                      role="separator"
-                                      aria-orientation="vertical"
-                                      tabIndex={0}
-                                      onKeyDown={onHandleKeyDown}
-                                      onMouseDown={(e) => {
-                                        if (e.button === 0) {
-                                          e.stopPropagation();
-                                          onStartDrag(e.clientX);
-                                        }
-                                      }}
-                                      style={{
-                                        position: 'absolute',
-                                        left: 0,
-                                        top: 0,
-                                        bottom: 0,
-                                        width: 14,
-                                        transform: 'translateX(-7px)',
-                                        cursor: 'col-resize',
-                                        zIndex: 12
-                                      }}
-                                  />
-                                  <ProcessInstanceDetail
-                                      instanceId={selectedInstanceId}
-                                      processDefinitionId={viewedBpmnDefinition!}
-                                      version={viewedBpmnVersion!}
-                                      onClose={handleCloseDetail}
-                                      incidentInfo={selectedIncident}
-                                      overlaySettings={overlaySettings}
-                                      parentProcessInstanceId={selectedInstance?.parentProcessInstanceId}
-                                      onNavigateToInstance={navigateToInstance}
-                                      selectedElementId={selectedElementId}
-                                      selectedFlowNodeInstanceKey={selectedFlowNodeInstanceKey}
-                                      onRowClick={handleTableRowClick}
-                                      onFlowNodeInstancesUpdate={handleFlowNodeInstancesUpdate}
-                                  />
-                                </div>
-                            )}
+                                    {/* Inner content — slides in/out via keyframe animation */}
+                                    <div
+                                        style={{
+                                          position: 'absolute',
+                                          inset: 0,
+                                          background: 'white',
+                                          borderLeft: '1px solid #d9d9d9',
+                                          boxShadow: '-4px 0 12px rgba(0, 0, 0, 0.08)',
+                                          animation: isClosing
+                                              ? 'slideOutRight 0.3s ease-in forwards'
+                                              : 'slideInRight 0.3s ease-out forwards',
+                                          overflow: 'hidden',
+                                        }}
+                                        onKeyDown={onHandleKeyDown}
+                                        role="region"
+                                        aria-label="Process instance detail panel"
+                                        tabIndex={-1}
+                                    >
+                                      {/* Resize handle at the left edge of the panel */}
+                                      <div
+                                          role="separator"
+                                          aria-orientation="vertical"
+                                          tabIndex={0}
+                                          onKeyDown={onHandleKeyDown}
+                                          onMouseDown={(e) => {
+                                            if (e.button === 0) {
+                                              e.stopPropagation();
+                                              onStartDrag(e.clientX);
+                                            }
+                                          }}
+                                          style={{
+                                            position: 'absolute',
+                                            left: 0,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: 14,
+                                            transform: 'translateX(-7px)',
+                                            cursor: 'col-resize',
+                                            zIndex: 12,
+                                          }}
+                                      />
+                                      <ProcessInstanceDetail
+                                          instanceId={selectedInstanceId}
+                                          processDefinitionId={viewedBpmnDefinition!}
+                                          version={viewedBpmnVersion!}
+                                          onClose={handleCloseDetail}
+                                          incidentInfo={selectedIncident}
+                                          overlaySettings={overlaySettings}
+                                          parentProcessInstanceId={selectedInstance?.parentProcessInstanceId}
+                                          onNavigateToInstance={navigateToInstance}
+                                          selectedElementId={selectedElementId}
+                                          selectedFlowNodeInstanceKey={selectedFlowNodeInstanceKey}
+                                          onRowClick={handleTableRowClick}
+                                          onFlowNodeInstancesUpdate={handleFlowNodeInstancesUpdate}
+                                      />
+                                    </div>
+                                  </>
+                              )}
+                            </div>
                           </Card>
                       ) as React.ReactNode}
                   />

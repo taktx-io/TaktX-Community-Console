@@ -16,6 +16,8 @@ interface UseDetailPaneResizeParams {
 interface UseDetailPaneResizeReturn {
   /** Current detail pane width in pixels */
   detailWidthPx: number | null;
+  /** True while the user is actively dragging the resize handle */
+  isDragging: boolean;
   /** Mouse down handler to start drag resize */
   onStartDrag: (clientX: number) => void;
   /** Keyboard handler for accessibility (arrow keys to resize) */
@@ -45,6 +47,7 @@ export function useDetailPaneResize({
   const detailMaxRatio = 0.95; // cannot exceed 95% of container width
 
   const [detailWidthPx, setDetailWidthPx] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const draggingRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const rafRef = useRef<number | null>(null);
 
@@ -70,10 +73,10 @@ export function useDetailPaneResize({
 
         // Validate saved value: if it's way larger than the container width, it was likely
         // calculated from the old buggy code using full window width. Also reset if it's
-        // unreasonably small (less than 50% when we want 75% default).
+        // unreasonably small (less than 35% when we want 65% default).
         const isInvalidSavedValue = saved > 0 && containerWidth && (
           saved > containerWidth * 1.2 || // Too large
-          saved < containerWidth * 0.5   // Too small
+          saved < containerWidth * 0.35   // Too small
         );
 
         if (saved && !Number.isNaN(saved) && saved > 0 && !isInvalidSavedValue) {
@@ -92,9 +95,9 @@ export function useDetailPaneResize({
               ratio: saved / (containerWidth || 1)
             });
           }
-          // default to 75% if no saved value
-          const defaultWidth = Math.round(availableWidth * 0.75);
-          console.log('[useDetailPaneResize] Using default width (75%)', {
+          // default to 65% if no saved value (leaves 35% for the instance table)
+          const defaultWidth = Math.round(availableWidth * 0.65);
+          console.log('[useDetailPaneResize] Using default width (65%)', {
             defaultWidth,
             availableWidth
           });
@@ -180,13 +183,14 @@ export function useDetailPaneResize({
     const root = containerRef.current;
     if (!root) return;
     const rect = root.getBoundingClientRect();
-    // Use saved value or default to 75%
+    // Use saved value or default to 65%
     const saved = Number(localStorage.getItem(DETAIL_WIDTH_KEY));
     const defaultWidth = saved && !Number.isNaN(saved) && saved > 0
       ? saved
-      : Math.round(rect.width * 0.75);
+      : Math.round(rect.width * 0.65);
     const currentWidth = detailWidthPx ?? defaultWidth;
     draggingRef.current = { startX: clientX, startWidth: currentWidth };
+    setIsDragging(true);
 
     // Prevent text selection and native drag behaviour while resizing
     try {
@@ -281,6 +285,7 @@ export function useDetailPaneResize({
       }
 
       draggingRef.current = null;
+      setIsDragging(false);
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
     };
@@ -295,11 +300,11 @@ export function useDetailPaneResize({
 
     const rect = containerRef.current.getBoundingClientRect();
     const max = Math.floor(rect.width * detailMaxRatio);
-    // Use saved value or default to 75%
+    // Use saved value or default to 65%
     const saved = Number(localStorage.getItem(DETAIL_WIDTH_KEY));
     const defaultWidth = saved && !Number.isNaN(saved) && saved > 0
       ? saved
-      : Math.round(rect.width * 0.75);
+      : Math.round(rect.width * 0.65);
     const cur = detailWidthPx ?? defaultWidth;
     let next = cur;
 
@@ -327,6 +332,7 @@ export function useDetailPaneResize({
 
   return {
     detailWidthPx,
+    isDragging,
     onStartDrag,
     onHandleKeyDown,
   };
