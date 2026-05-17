@@ -34,13 +34,14 @@ jobs:
             exit 1
           fi
 
+          # latest always tracks the most recently released version (stable or pre-release)
+          # so that users pulling :latest always get the newest image
           if [[ "$VERSION" == *-* ]]; then
             IS_PRERELEASE=true
-            PUBLISH_LATEST=false
           else
             IS_PRERELEASE=false
-            PUBLISH_LATEST=true
           fi
+          PUBLISH_LATEST=true
 
           echo "original_tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
