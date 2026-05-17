@@ -9,7 +9,6 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ExclamationCircleOutlined,
-  CloseCircleFilled,
 } from '@ant-design/icons';
 import { EXECUTION_STATES } from '@/lib/types/filters';
 import type { OverlaySettingsState } from './OverlaySettings';
@@ -537,12 +536,6 @@ export default function FilterPanel({
                 value={businessKey}
                 onChange={(e) => onBusinessKeyChange(e.target.value)}
                 allowClear
-                suffix={businessKey ? (
-                  <CloseCircleFilled
-                    style={{ color: '#ccc', cursor: 'pointer', fontSize: 12 }}
-                    onClick={() => onBusinessKeyChange('')}
-                  />
-                ) : <span />}
                 style={{ fontSize: 13 }}
                 data-testid="filter-business-key"
               />
@@ -566,12 +559,6 @@ export default function FilterPanel({
                 value={tag}
                 onChange={(e) => onTagChange(e.target.value)}
                 allowClear
-                suffix={tag ? (
-                  <CloseCircleFilled
-                    style={{ color: '#ccc', cursor: 'pointer', fontSize: 12 }}
-                    onClick={() => onTagChange('')}
-                  />
-                ) : <span />}
                 style={{ fontSize: 13 }}
                 data-testid="filter-tag"
               />
