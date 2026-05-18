@@ -2,7 +2,7 @@
 quarkus = "3.28.4"
 junit = "5.14.4"
 assertj = "3.27.7"
-slf4j = "2.0.17"
+slf4j = "2.0.18"
 mockito = "3.12.4"
 lombok = "1.18.44"
 datastax = "4.17.0"
